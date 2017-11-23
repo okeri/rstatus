@@ -98,7 +98,7 @@ pub const DEFAULT_COLOR: u32 = 0xffffff;
 pub struct Base {
     pub info: Info,
     name: String,
-    prefix: String,
+    pub prefix: String,
     suffix: String,
     invalid: Value,
     pub data: Value,
@@ -162,7 +162,7 @@ impl Base {
         if print_color != DEFAULT_COLOR {
             print!(",\"color\":\"#{:06X}\"", print_color);
         }
-        print!(",\"separator_block_width\":15}}");
+        print!(",\"separator_block_width\":10}}");
     }
     pub fn get_color(&self, value: u32) -> u32 {
         for to in self.thresholds.iter().rev() {

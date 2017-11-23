@@ -19,38 +19,66 @@ use block;
 pub struct Block {
     base: block::Base,
     mixer: String,
+    use_extra: bool,
+    prefix_extra: Vec<String>,
 }
 
 impl Block {
-    pub fn new(base: block::Base, mixer: String) -> Block {
+    pub fn new(base: block::Base, mixer: String,
+               prefix_extra: Vec<String>) -> Block {
         Block {
             base: base,
             mixer: mixer,
+            use_extra: prefix_extra.len() > 1,
+            prefix_extra: prefix_extra,
         }
     }
+}
+
+enum MixerValue {
+    Off,
+    Volume(u32)
+}
+
+fn get_mixer_value(mixer: &str) -> MixerValue {
+    use std::str;
+    use std::process::Command;
+    let output = str::from_utf8(&Command::new("amixer")
+                                .arg("get")
+                                .arg(&mixer)
+                                .output()
+                                .expect("failed to find amixer")
+                                .stdout)
+        .expect("process amixer returned bad output")
+        .to_string();
+    let data: Vec<&str> = output.split_whitespace().collect();
+    return if data[data.len() - 1] != "[on]" {
+        MixerValue::Off
+    } else {
+        MixerValue::Volume(data[data.len() - 3][1..data[data.len() - 3].len() - 2]
+            .parse::<u32>()
+                   .expect("amixer output parse error"))
+    };
 }
 
 impl block::Block for Block {
     impl_Block!();
     fn update(&mut self) {
-        use std::str;
-        use std::process::Command;
-        let output = str::from_utf8(&Command::new("amixer")
-                                         .arg("get")
-                                         .arg(&self.mixer)
-                                         .output()
-                                         .expect("failed to find amixer")
-                                         .stdout)
-                .expect("process amixer returned bad output")
-                .to_string();
-        let data: Vec<&str> = output.split_whitespace().collect();
-        self.base.data = if data[data.len() - 1] != "[on]" {
-            block::Value::None
-        } else {
-            let volume = data[data.len() - 3][1..data[data.len() - 3].len() - 2]
-                .parse::<u32>()
-                .expect("amixer output parse error");
+        self.base.data = if let MixerValue::Volume(volume) = get_mixer_value(&self.mixer) {
+            if self.use_extra {
+                if let MixerValue::Off = get_mixer_value("Speaker") {
+                    if let MixerValue::Volume(_) = get_mixer_value("Headphone") {
+                        self.base.prefix = self.prefix_extra[0].clone()
+                    } else {
+                        self.base.prefix = self.prefix_extra[1].clone()
+                    }
+                } else {
+                    self.base.prefix = self.prefix_extra[1].clone()
+                }
+            }
             block::Value::new((volume, self.base.get_color(volume)))
-        };
+        } else {
+            block::Value::None
+        }
     }
 }
