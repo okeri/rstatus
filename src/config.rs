@@ -22,6 +22,7 @@ use memory;
 use temperature;
 use filesystem;
 use volume;
+use cpuload;
 use wifi;
 use time;
 use battery;
@@ -154,6 +155,10 @@ fn create(config: &Yaml) -> Box<block::Block> {
                                             .expect("filesystem::path must be defined")
                                             .to_string()));
                 }
+                "cpuload" => {
+                    return Box::new(cpuload::Block::new(base));
+                }
+
                 "memory" => {
                     return Box::new(memory::Block::new(base));
                 }

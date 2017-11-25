@@ -21,6 +21,7 @@ mod block;
 mod utility;
 mod config;
 mod undefined;
+mod cpuload;
 mod memory;
 mod temperature;
 mod battery;
