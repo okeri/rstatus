@@ -31,11 +31,17 @@ struct CpuStat {
     total: u64,
 }
 
+impl CpuStat {
+    fn sub(&self) -> u64 {
+        self.total - self.idle
+    }
+}
+
 impl block::Block for Block {
     impl_Block!();
     fn update(&mut self) {
         use utility;
-        let data = utility::read_file("/proc/stat").expect("cannot open /proc/stat");
+        let data = utility::read_filen("/proc/stat", 96).expect("cannot open /proc/stat");
         let values: Vec<&str> = data.split_whitespace().collect();
 
         static mut INITED: bool = false;
@@ -57,7 +63,7 @@ impl block::Block for Block {
         }
         unsafe {
             if INITED {
-                let value = ((stat.total - stat.idle) - (PREV_STAT.total - PREV_STAT.idle)) * 100 /
+                let value = (stat.sub() - PREV_STAT.sub()) * 100 /
                     (stat.total - PREV_STAT.total);
 
                 self.base.data = block::Value::new((value as u32, self.base.get_color(value as u32)));

@@ -31,6 +31,23 @@ pub fn read_file(filename: &str) -> Result<String, io::Error> {
     }
 }
 
+pub fn read_filen(filename: &str, max: usize) -> Result<String, io::Error> {
+    use std::io::Read;
+    use std::str;
+
+    let file = fs::File::open(&filename);
+    if file.is_err() {
+        return Err(file.err().unwrap());
+    }
+
+    let mut buf = vec![0u8; max];
+
+    match file.unwrap().read_exact(&mut buf) {
+        Ok(_) => Ok(String::from(str::from_utf8(&buf).unwrap())),
+        Err(e) => Err(e),
+    }
+}
+
 pub fn gcd(i1: u64, i2: u64) -> u64 {
     let mut x = i1;
     let mut y = i2;
