@@ -16,6 +16,7 @@
 
 pub struct Info {
     pub interval: u32,
+    pub retry: u32,
     pub signal: u32,
 }
 
@@ -110,11 +111,10 @@ impl Base {
         self.invalid = Value::new((name, color));
     }
     pub fn push_threshold(&mut self, value: u32, color: u32) {
-        self.thresholds
-            .push(Threshold {
-                      value: value,
-                      color: color,
-                  });
+        self.thresholds.push(Threshold {
+            value: value,
+            color: color,
+        });
     }
     pub fn new(info: Info) -> Self {
         Base {
@@ -139,6 +139,19 @@ impl Base {
     pub fn set_suffix(&mut self, suffix: String) {
         self.suffix = suffix
     }
+
+    pub fn retry(&mut self, interval: u32) -> bool {
+        if self.info.retry != 0 {
+            if self.info.retry <= interval {
+                self.info.retry = 0;
+                return true;
+            } else {
+                self.info.retry -= interval;
+            }
+        }
+        false
+    }
+
     pub fn serialize(&self) {
         print!("{{\"name\":\"{}\",\"full_text\":", self.name);
         let mut print_color: u32 = DEFAULT_COLOR;
@@ -164,6 +177,7 @@ impl Base {
         }
         print!(",\"separator_block_width\":10}}");
     }
+
     pub fn get_color(&self, value: u32) -> u32 {
         for to in self.thresholds.iter().rev() {
             if value >= to.value {
@@ -178,6 +192,7 @@ pub trait Block {
     fn update(&mut self);
     fn info(&self) -> &Info;
     fn serialize(&self);
+    fn retry(&mut self, interval: u32) -> bool;
 }
 
 macro_rules! impl_Block {
@@ -187,6 +202,9 @@ macro_rules! impl_Block {
         }
         fn serialize(&self) {
             self.base.serialize();
+        }
+        fn retry(&mut self, interval: u32) -> bool {
+            self.base.retry(interval)
         }
     }
 }

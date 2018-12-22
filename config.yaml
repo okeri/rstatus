@@ -1,7 +1,8 @@
 config:
   - custom:
       command: 'echo test'
-      interval: 5
+      interval: 15
+      retry: 5
 
   - temperature:
       sensor: '/sys/class/thermal/thermal_zone0/temp'

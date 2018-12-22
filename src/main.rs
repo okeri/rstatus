@@ -41,9 +41,9 @@ fn blocks() -> BlocksWrapper {
 
     unsafe {
         ONCE.call_once(|| {
-                           let singleton = Arc::new(Mutex::new(init_blocks()));
-                           SINGLETON = std::mem::transmute(Box::new(singleton));
-                       });
+            let singleton = Arc::new(Mutex::new(init_blocks()));
+            SINGLETON = std::mem::transmute(Box::new(singleton));
+        });
         (*SINGLETON).clone()
     }
 }
@@ -74,8 +74,8 @@ fn display_all() {
 }
 
 fn init_blocks() -> Vec<Box<block::Block>> {
-    let home = std::env::home_dir().expect("error getting home var");
-    let cfg_path = home.as_path()
+    let home = std::env::var_os("HOME").expect("error getting home var");
+    let cfg_path = std::path::Path::new(&home)
         .join(".config")
         .join("rstatus")
         .join("config.yaml");
@@ -85,9 +85,9 @@ fn init_blocks() -> Vec<Box<block::Block>> {
 
 fn main() {
     let blocks = blocks();
-    let mut gcd: u64 = 0;
+    let mut gcd: u32 = 0;
     for block in blocks.lock().unwrap().iter() {
-        gcd = block.info().interval as u64;
+        gcd = block.info().interval;
         if gcd != 0 {
             break;
         }
@@ -98,24 +98,27 @@ fn main() {
             block.update();
             let info = block.info();
             if info.interval != 0 {
-                gcd = utility::gcd(gcd, info.interval as u64);
+                gcd = utility::gcd(gcd, info.interval);
             }
             if info.signal != 0 {
                 utility::signal(utility::SIGRTMIN + info.signal as i32, update);
             }
         }
 
-        println!("{{\"version\": 1}}\n[");
+        println!("{{\"version\": 1, \"click_events\": true}}\n[");
         let mut count = 1u64;
         loop {
-            std::thread::sleep(std::time::Duration::from_secs(gcd));
+            std::thread::sleep(std::time::Duration::from_secs(gcd as u64));
             for block in blocks.lock().unwrap().iter_mut() {
-                if block.info().interval != 0 && count % block.info().interval as u64 == 0 {
+                if block.info().interval != 0 &&
+                    (block.retry(gcd) || count % block.info().interval as u64 == 0)
+                {
                     block.update();
                 }
+
             }
             display_all();
-            count += gcd
+            count += gcd as u64
         }
     }
 }

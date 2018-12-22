@@ -45,28 +45,28 @@ impl block::Block for Block {
         let values: Vec<&str> = data.split_whitespace().collect();
 
         static mut INITED: bool = false;
-        static mut PREV_STAT: CpuStat = CpuStat{idle: 0, total: 0};
-        let mut stat: CpuStat = CpuStat{idle: 0, total: 0};
+        static mut PREV_STAT: CpuStat = CpuStat { idle: 0, total: 0 };
+        let mut stat: CpuStat = CpuStat { idle: 0, total: 0 };
 
 
         for e in 1..7 {
             if e == 4 {
-                stat.idle = values[4].trim()
-                    .parse::<u64>()
-                    .expect("cannot parse procfs stat info");
+                stat.idle = values[4].trim().parse::<u64>().expect(
+                    "cannot parse procfs stat info",
+                );
                 stat.total += stat.idle;
             } else {
-                stat.total += values[e].trim()
-                    .parse::<u64>()
-                    .expect("cannot parse procfs stat info");
+                stat.total += values[e].trim().parse::<u64>().expect(
+                    "cannot parse procfs stat info",
+                );
             }
         }
         unsafe {
             if INITED {
-                let value = (stat.sub() - PREV_STAT.sub()) * 100 /
-                    (stat.total - PREV_STAT.total);
+                let value = (stat.sub() - PREV_STAT.sub()) * 100 / (stat.total - PREV_STAT.total);
 
-                self.base.data = block::Value::new((value as u32, self.base.get_color(value as u32)));
+                self.base.data =
+                    block::Value::new((value as u32, self.base.get_color(value as u32)));
             } else {
                 INITED = true;
                 self.base.data = block::Value::None;

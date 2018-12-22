@@ -33,14 +33,12 @@ impl block::Block for Block {
         let data = utility::read_file("/proc/meminfo").expect("cannot open /proc/meminfo");
         let values: Vec<&str> = data.split_whitespace().collect();
 
-        let total = values[1]
-            .trim()
-            .parse::<f64>()
-            .expect("cannot parse procfs for memory info");
-        let free = values[7]
-            .trim()
-            .parse::<f64>()
-            .expect("cannot parse procfs for memory info");
+        let total = values[1].trim().parse::<f64>().expect(
+            "cannot parse procfs for memory info",
+        );
+        let free = values[7].trim().parse::<f64>().expect(
+            "cannot parse procfs for memory info",
+        );
         let value = (1f64 - free / total) * 100f64;
         self.base.data = block::Value::new((value as u32, self.base.get_color(value as u32)));
     }

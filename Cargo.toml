@@ -1,6 +1,6 @@
 [package]
 name = "rstatus"
-version = "0.8.0"
+version = "0.8.1"
 authors = ["Oleg Keri <ezhi99@gmail.com>"]
 
 [dependencies]

@@ -35,12 +35,12 @@ impl block::Block for Block {
     impl_Block!();
     fn update(&mut self) {
         use utility;
-        let val = utility::read_file(&self.sensor)
-            .expect(&format!("cannot open {}", self.sensor));
+        let val = utility::read_file(&self.sensor).expect(&format!("cannot open {}", self.sensor));
 
-        let temp = val.trim()
-            .parse::<u32>()
-            .expect(&format!("expected integer in {}", self.sensor)) / 1000;
+        let temp = val.trim().parse::<u32>().expect(&format!(
+            "expected integer in {}",
+            self.sensor
+        )) / 1000;
         self.base.data = block::Value::new((temp, self.base.get_color(temp)));
     }
 }

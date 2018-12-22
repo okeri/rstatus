@@ -64,11 +64,15 @@ impl block::Block for Block {
             .unwrap_or(1000);
 
         self.base.data = if value != 1000 {
-            block::Value::new((format!("{}{}{}",
-                                       self.statuses[index].prefix,
-                                       value,
-                                       self.statuses[index].suffix),
-                               self.base.get_color(value)))
+            block::Value::new((
+                format!(
+                    "{}{}{}",
+                    self.statuses[index].prefix,
+                    value,
+                    self.statuses[index].suffix
+                ),
+                self.base.get_color(value),
+            ))
         } else {
             block::Value::None
         }

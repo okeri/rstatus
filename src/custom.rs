@@ -20,49 +20,57 @@ use utility;
 pub struct Block {
     base: block::Base,
     command: String,
+    retry: u32,
 }
 
 impl Block {
-    pub fn new(base: block::Base, command: String) -> Block {
+    pub fn new(base: block::Base, command: String, retry: u32) -> Block {
         Block {
             base: base,
             command: command,
+            retry: retry,
         }
     }
 }
 
 impl block::Block for Block {
     impl_Block!();
+
     fn update(&mut self) {
         use std::str;
         use std::process::Command;
-        let output = str::from_utf8(&Command::new("sh")
-                                         .arg("-c")
-                                         .arg(&self.command)
-                                         .output()
-                                         .expect("failed to execute command")
-                                         .stdout)
-                .expect("custom process returned bad output")
-                .to_string();
-        let data: Vec<&str> = output.split('\n').collect();
-        self.base.data =
-            match data.len() {
-                0 => {
-                    block::Value::None
-                }
-                1 => {
-                    let value = data[0].parse::<u32>();
-                    if value.is_ok() {
-                        block::Value::new((data[0],
-                                           self.base.get_color(value.unwrap())))
-                    } else {
-                        block::Value::new(data[0])
-                    }
-                }
-                _ => {
-                    block::Value::new((
-                        data[0], utility::read_color(data[1], block::DEFAULT_COLOR)))
+        let output = Command::new("sh")
+            .arg("-c")
+            .arg(&self.command)
+            .output()
+            .expect(&format!("failed to execute command '{}'", self.command));
+
+        let strval = str::from_utf8(&output.stdout)
+            .expect("custom process returned bad output")
+            .to_string();
+
+        if !output.status.success() {
+            self.base.info.retry = self.retry;
+            return;
+        }
+
+        let data: Vec<&str> = strval.split('\n').collect();
+        self.base.data = match data.len() {
+            0 => block::Value::None,
+            1 => {
+                let value = data[0].parse::<u32>();
+                if value.is_ok() {
+                    block::Value::new((data[0], self.base.get_color(value.unwrap())))
+                } else {
+                    block::Value::new(data[0])
                 }
             }
+            _ => {
+                block::Value::new((
+                    data[0],
+                    utility::read_color(data[1], block::DEFAULT_COLOR),
+                ))
+            }
+        }
     }
 }

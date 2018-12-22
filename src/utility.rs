@@ -48,7 +48,7 @@ pub fn read_filen(filename: &str, max: usize) -> Result<String, io::Error> {
     }
 }
 
-pub fn gcd(i1: u64, i2: u64) -> u64 {
+pub fn gcd(i1: u32, i2: u32) -> u32 {
     let mut x = i1;
     let mut y = i2;
     let mut r = x % y;

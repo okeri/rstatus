@@ -34,8 +34,10 @@ impl Block {
 impl block::Block for Block {
     impl_Block!();
     fn update(&mut self) {
-        self.base.data = block::Value::new((time::strftime(self.format.as_ref(), &time::now())
-                                                .unwrap_or_else( |_| "bad format".to_string()),
-                                            block::DEFAULT_COLOR));
+        self.base.data = block::Value::new((
+            time::strftime(self.format.as_ref(), &time::now())
+                .unwrap_or_else(|_| "bad format".to_string()),
+            block::DEFAULT_COLOR,
+        ));
     }
 }

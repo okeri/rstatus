@@ -24,8 +24,7 @@ pub struct Block {
 }
 
 impl Block {
-    pub fn new(base: block::Base, mixer: String,
-               prefix_extra: Vec<String>) -> Block {
+    pub fn new(base: block::Base, mixer: String, prefix_extra: Vec<String>) -> Block {
         Block {
             base: base,
             mixer: mixer,
@@ -37,27 +36,30 @@ impl Block {
 
 enum MixerValue {
     Off,
-    Volume(u32)
+    Volume(u32),
 }
 
 fn get_mixer_value(mixer: &str) -> MixerValue {
     use std::str;
     use std::process::Command;
-    let output = str::from_utf8(&Command::new("amixer")
-                                .arg("get")
-                                .arg(&mixer)
-                                .output()
-                                .expect("failed to find amixer")
-                                .stdout)
-        .expect("process amixer returned bad output")
+    let output = str::from_utf8(
+        &Command::new("amixer")
+            .arg("get")
+            .arg(&mixer)
+            .output()
+            .expect("failed to find amixer")
+            .stdout,
+    ).expect("process amixer returned bad output")
         .to_string();
     let data: Vec<&str> = output.split_whitespace().collect();
-    return if data[data.len() - 1] != "[on]" {
+    return if data.len() == 0 || data[data.len() - 1] != "[on]" {
         MixerValue::Off
     } else {
-        MixerValue::Volume(data[data.len() - 3][1..data[data.len() - 3].len() - 2]
-            .parse::<u32>()
-                   .expect("amixer output parse error"))
+        MixerValue::Volume(
+            data[data.len() - 3][1..data[data.len() - 3].len() - 2]
+                .parse::<u32>()
+                .expect("amixer output parse error"),
+        )
     };
 }
 

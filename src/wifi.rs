@@ -34,8 +34,8 @@ impl block::Block for Block {
     impl_Block!();
     fn update(&mut self) {
         use utility;
-        let data = utility::read_file("/proc/net/wireless")
-            .expect("cannot open /proc/net/wireless");
+        let data =
+            utility::read_file("/proc/net/wireless").expect("cannot open /proc/net/wireless");
         for line in data.split('\n') {
             if line.find(&self.interface).is_some() {
                 let linedata: Vec<&str> = line.split_whitespace().collect();
