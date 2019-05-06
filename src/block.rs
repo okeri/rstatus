@@ -175,7 +175,7 @@ impl Base {
         if print_color != DEFAULT_COLOR {
             print!(",\"color\":\"#{:06X}\"", print_color);
         }
-        print!(",\"separator_block_width\":10}}");
+        print!(",\"separator_block_width\":16}}");
     }
 
     pub fn get_color(&self, value: u32) -> u32 {
