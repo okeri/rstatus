@@ -84,6 +84,11 @@ fn create(config: &Yaml) -> Box<block::Block> {
                             block::DEFAULT_COLOR,
                         );
                     }
+                    "color" => {
+                        base.set_color(utility::read_color(
+                            val.as_str().expect("invalid color must be color value"),
+                            block::DEFAULT_COLOR));
+                    }
                     "thresholds" => {
                         if let Yaml::Array(ref thresholds) = *val {
                             for to in thresholds {

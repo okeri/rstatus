@@ -37,7 +37,7 @@ impl block::Block for Block {
         self.base.data = block::Value::new((
             time::strftime(self.format.as_ref(), &time::now())
                 .unwrap_or_else(|_| "bad format".to_string()),
-            block::DEFAULT_COLOR,
+            self.base.color
         ));
     }
 }
