@@ -26,8 +26,8 @@ use cpuload;
 use wifi;
 use time;
 use battery;
-use utility;
 use custom;
+use utility;
 use self::yaml_rust::yaml::Yaml;
 
 fn create(config: &Yaml) -> Box<block::Block> {
@@ -245,7 +245,6 @@ fn create(config: &Yaml) -> Box<block::Block> {
 }
 
 pub fn init_from(config_path: &std::path::Path) -> Vec<Box<block::Block>> {
-    use utility;
     let mut blocks = Vec::new();
 
     let data = utility::read_file(config_path.to_str().unwrap()).expect("cannot read config file");

@@ -102,6 +102,7 @@ pub struct Base {
     pub prefix: String,
     suffix: String,
     invalid: Value,
+    pub color: u32,
     pub data: Value,
     thresholds: Vec<Threshold>,
 }
@@ -123,6 +124,7 @@ impl Base {
             prefix: "".to_string(),
             suffix: "".to_string(),
             invalid: Value::None,
+            color: DEFAULT_COLOR,
             data: Value::None,
             thresholds: vec![],
         }
@@ -140,6 +142,9 @@ impl Base {
         self.suffix = suffix
     }
 
+    pub fn set_color(&mut self, color: u32) {
+        self.color = color;
+    }
     pub fn retry(&mut self, interval: u32) -> bool {
         if self.info.retry != 0 {
             if self.info.retry <= interval {
@@ -154,7 +159,7 @@ impl Base {
 
     pub fn serialize(&self) {
         print!("{{\"name\":\"{}\",\"full_text\":", self.name);
-        let mut print_color: u32 = DEFAULT_COLOR;
+        let mut print_color: u32 = self.color;
         match self.data {
             Value::Int { value, color } => {
                 print!("\"{}{}{}\"", self.prefix, value, self.suffix);
@@ -184,7 +189,7 @@ impl Base {
                 return to.color;
             }
         }
-        DEFAULT_COLOR
+        self.color
     }
 }
 

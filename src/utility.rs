@@ -61,7 +61,6 @@ pub fn gcd(i1: u32, i2: u32) -> u32 {
 }
 
 pub fn signal(signal: i32, action: fn(i32)) {
-    use libc;
     unsafe {
         let mut sigset = mem::uninitialized();
         if libc::sigfillset(&mut sigset) != -1 {
