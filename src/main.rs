@@ -1,6 +1,6 @@
 /*
-  status bar for i3like wms like i3, sway, etc...
-  Copyright (C) 2017 Oleg Keri
+  status bar for tiling wms like i3, sway, etc...
+  Copyright (C) 2019 Oleg Keri
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -13,27 +13,21 @@
   You should have received a copy of the GNU General Public License
   along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-extern crate libc;
+mod base;
 
 #[macro_use]
 mod block;
 
+#[macro_use]
+mod blocks;
+mod block_builder;
 mod utility;
-mod config;
-mod undefined;
-mod cpuload;
-mod memory;
-mod temperature;
-mod battery;
-mod filesystem;
-mod wifi;
-mod time;
-mod volume;
-mod custom;
+
+all_blocks! {mod_blocks}
 
 use std::sync::{Arc, Mutex, Once, ONCE_INIT};
 
-type BlocksWrapper = Arc<Mutex<Vec<Box<block::Block>>>>;
+type BlocksWrapper = Arc<Mutex<blocks::BlocksCollection>>;
 
 fn blocks() -> BlocksWrapper {
     static mut SINGLETON: *const BlocksWrapper = 0 as *const BlocksWrapper;
@@ -49,10 +43,10 @@ fn blocks() -> BlocksWrapper {
 }
 
 fn update(sig: i32) {
-    let blocks = blocks();
     let mut refresh = false;
+    let blocks = blocks();
     for block in blocks.lock().unwrap().iter_mut() {
-        if sig == block.info().signal as i32 + utility::SIGRTMIN {
+        if sig == block.signal() as i32 + utility::SIGRTMIN {
             block.update();
             refresh = true;
         }
@@ -66,28 +60,34 @@ fn display_all() {
     print!("[");
     let mut first = true;
     let blocks = blocks();
-    for block in blocks.lock().unwrap().iter_mut() {
-        if !first { print!(",") } else { first = false }
-        block.serialize();
+    let mut prev_bg: Option<u32> = None;
+    for block in blocks.lock().unwrap().iter() {
+        if !first {
+            print!(",");
+        } else {
+            first = false
+        }
+        block.render(prev_bg);
+        prev_bg = block.bgcolor();
     }
     println!("],");
 }
 
-fn init_blocks() -> Vec<Box<block::Block>> {
+fn init_blocks() -> blocks::BlocksCollection {
     let home = std::env::var_os("HOME").expect("error getting home var");
     let cfg_path = std::path::Path::new(&home)
         .join(".config")
         .join("rstatus")
         .join("config.yaml");
 
-    config::init_from(&cfg_path)
+    blocks::init_from_config(&cfg_path)
 }
 
 fn main() {
     let blocks = blocks();
     let mut gcd: u32 = 0;
     for block in blocks.lock().unwrap().iter() {
-        gcd = block.info().interval;
+        gcd = block.interval();
         if gcd != 0 {
             break;
         }
@@ -96,26 +96,25 @@ fn main() {
     if gcd != 0 {
         for block in blocks.lock().unwrap().iter_mut() {
             block.update();
-            let info = block.info();
-            if info.interval != 0 {
-                gcd = utility::gcd(gcd, info.interval);
+            let interval = block.interval();
+            if interval != 0 {
+                gcd = utility::gcd(gcd, interval);
             }
-            if info.signal != 0 {
-                utility::signal(utility::SIGRTMIN + info.signal as i32, update);
+            let signal = block.signal();
+            if signal != 0 {
+                utility::signal(utility::SIGRTMIN + signal as i32, update);
             }
         }
 
-        println!("{{\"version\": 1, \"click_events\": true}}\n[");
+        println!("{{\"version\": 1, \"click_events\": false}}\n[");
         let mut count = 1u64;
         loop {
             std::thread::sleep(std::time::Duration::from_secs(gcd as u64));
             for block in blocks.lock().unwrap().iter_mut() {
-                if block.info().interval != 0 &&
-                    (block.retry(gcd) || count % block.info().interval as u64 == 0)
-                {
+                let interval = block.interval();
+                if interval != 0 && count % interval as u64 == 0 {
                     block.update();
                 }
-
             }
             display_all();
             count += gcd as u64

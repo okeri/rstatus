@@ -1,6 +1,6 @@
 /*
-  status bar for i3like wms like i3, sway, etc...
-  Copyright (C) 2017 Oleg Keri
+  status bar for tiling wms like i3, sway, etc...
+  Copyright (C) 2019 Oleg Keri
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -14,67 +14,61 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 
-use block;
+use super::base::{Base, Value};
+use super::block;
+use serde::Deserialize;
+use std::collections::HashMap;
 
+#[derive(Deserialize)]
 pub struct Status {
+    #[serde(default)]
     pub prefix: String,
+    #[serde(default)]
     pub suffix: String,
 }
 
+#[derive(Deserialize)]
 pub struct Block {
-    base: block::Base,
+    #[serde(flatten)]
+    base: Base,
     sensor: String,
-    statuses: [Status; 3],
+    #[serde(default = "default_statuses")]
+    statuses: HashMap<String, Status>,
 }
-
-impl Block {
-    pub fn new(base: block::Base, sensor: String, statuses: [Status; 3]) -> Block {
-        Block {
-            base: base,
-            sensor: sensor,
-            statuses: statuses,
-        }
-    }
-}
-
 
 impl block::Block for Block {
     impl_Block!();
     fn update(&mut self) {
-        use utility;
-        let error = "error".to_string();
-        let readed_status = utility::read_file(&(self.sensor.clone() + "/status"));
-        let status = readed_status.as_ref().unwrap_or(&error).trim();
+        let status_raw = std::fs::read_to_string(&(self.sensor.clone() + "/status"))
+            .unwrap_or("error".to_string());
 
-        let index = match status.as_ref() {
-            "error" => {
-                self.base.data = block::Value::None;
-                return;
-            }
-            "Discharging" => 0,
-            "Charging" => 1,
-            _ => 2,
-        };
-
-        let value = utility::read_file(&(self.sensor.clone() + "/capacity"))
-            .as_ref()
-            .unwrap_or(&error)
-            .trim()
-            .parse::<u32>()
-            .unwrap_or(1000);
-
-        self.base.data = if value != 1000 {
-            block::Value::new((
-                format!(
-                    "{}{}{}",
-                    self.statuses[index].prefix,
-                    value,
-                    self.statuses[index].suffix
-                ),
-                self.base.get_color(value),
-            ))
-        } else {
-            block::Value::None
+        let status = status_raw.trim();
+        if status == "error" {
+            self.base.value = Value::Invalid;
+            return;
         }
+
+        let decoration = self.statuses.get(status2rstatus(status));
+        if let Some(d) = decoration {
+            self.base.set_prefix(&d.prefix);
+            self.base.set_suffix(&d.suffix);
+        }
+
+        let value = std::fs::read_to_string(&(self.sensor.clone() + "/capacity"))
+            .map_err(|_| ())
+            .and_then(|text| text.trim().parse::<u32>().map_err(|_| ()));
+        self.base.value = Value::new(value);
+    }
+}
+
+fn default_statuses() -> HashMap<String, Status> {
+    HashMap::new()
+}
+
+fn status2rstatus(status: &str) -> &str {
+    match status {
+        "Charging" => "online",
+        "Discharging" => "offline",
+        _ => "full",
     }
 }

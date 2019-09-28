@@ -1,6 +1,6 @@
 /*
-  status bar for i3like wms like i3, sway, etc...
-  Copyright (C) 2017 Oleg Keri
+  status bar for tiling wms like i3, sway, etc...
+  Copyright (C) 2019 Oleg Keri
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -14,40 +14,38 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 
-use block;
+use super::base::{Base, Value};
+use super::block;
+use serde::Deserialize;
 
+#[derive(Deserialize)]
 pub struct Block {
-    base: block::Base,
+    #[serde(flatten)]
+    base: Base,
     interface: String,
 }
 
-impl Block {
-    pub fn new(base: block::Base, interface: String) -> Block {
-        Block {
-            base: base,
-            interface: interface,
+fn parse_wifi_str(interface: &str, text: String) -> Result<u32, ()> {
+    for line in text.split('\n') {
+        if line.find(interface).is_some() {
+            let linedata: Vec<&str> = line.split_whitespace().collect();
+            return linedata[2][0..linedata[2].len() - 1]
+                .parse::<u32>()
+                .map(|value| value * 100 / 70)
+                .map_err(|_| ());
         }
     }
+    return Err(());
+}
+fn get_wifi_str(interface: &str) -> Result<u32, ()> {
+    std::fs::read_to_string("/proc/net/wireless")
+        .map_err(|_| ())
+        .and_then(|text| parse_wifi_str(interface, text))
 }
 
 impl block::Block for Block {
     impl_Block!();
     fn update(&mut self) {
-        use utility;
-        let data =
-            utility::read_file("/proc/net/wireless").expect("cannot open /proc/net/wireless");
-        for line in data.split('\n') {
-            if line.find(&self.interface).is_some() {
-                let linedata: Vec<&str> = line.split_whitespace().collect();
-                let level = linedata[2][0..linedata[2].len() - 1]
-                    .parse::<u32>()
-                    .unwrap_or(0) * 100 / 70;
-                self.base.data = if level > 0 {
-                    block::Value::new((level, self.base.get_color(level)))
-                } else {
-                    block::Value::None
-                };
-            }
-        }
+        self.base.value = Value::new(get_wifi_str(&self.interface));
     }
 }

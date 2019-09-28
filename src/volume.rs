@@ -1,6 +1,6 @@
 /*
-  status bar for i3like wms like i3, sway, etc...
-  Copyright (C) 2017 Oleg Keri
+  status bar for tiling wms like i3, sway, etc...
+  Copyright (C) 2019 Oleg Keri
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -14,24 +14,17 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 
-use block;
+use super::base::{Base, Value};
+use super::block;
+use serde::Deserialize;
 
+#[derive(Deserialize)]
 pub struct Block {
-    base: block::Base,
+    #[serde(flatten)]
+    base: Base,
     mixer: String,
-    use_extra: bool,
-    prefix_extra: Vec<String>,
-}
-
-impl Block {
-    pub fn new(base: block::Base, mixer: String, prefix_extra: Vec<String>) -> Block {
-        Block {
-            base: base,
-            mixer: mixer,
-            use_extra: prefix_extra.len() > 1,
-            prefix_extra: prefix_extra,
-        }
-    }
+    #[serde(default = "empty_extras")]
+    prefix_extras: Vec<String>,
 }
 
 enum MixerValue {
@@ -40,8 +33,9 @@ enum MixerValue {
 }
 
 fn get_mixer_value(mixer: &str) -> MixerValue {
-    use std::str;
     use std::process::Command;
+    use std::str;
+
     let output = str::from_utf8(
         &Command::new("amixer")
             .arg("get")
@@ -49,8 +43,9 @@ fn get_mixer_value(mixer: &str) -> MixerValue {
             .output()
             .expect("failed to find amixer")
             .stdout,
-    ).expect("process amixer returned bad output")
-        .to_string();
+    )
+    .expect("process amixer returned bad output")
+    .to_string();
     let data: Vec<&str> = output.split_whitespace().collect();
     return if data.len() == 0 || data[data.len() - 1] != "[on]" {
         MixerValue::Off
@@ -63,24 +58,28 @@ fn get_mixer_value(mixer: &str) -> MixerValue {
     };
 }
 
+fn empty_extras() -> Vec<String> {
+    Vec::new()
+}
+
 impl block::Block for Block {
     impl_Block!();
     fn update(&mut self) {
-        self.base.data = if let MixerValue::Volume(volume) = get_mixer_value(&self.mixer) {
-            if self.use_extra {
+        self.base.value = if let MixerValue::Volume(volume) = get_mixer_value(&self.mixer) {
+            if self.prefix_extras.len() > 1 {
                 if let MixerValue::Off = get_mixer_value("Speaker") {
                     if let MixerValue::Volume(_) = get_mixer_value("Headphone") {
-                        self.base.prefix = self.prefix_extra[0].clone()
+                        self.base.set_prefix(&self.prefix_extras[0]);
                     } else {
-                        self.base.prefix = self.prefix_extra[1].clone()
+                        self.base.set_prefix(&self.prefix_extras[1]);
                     }
                 } else {
-                    self.base.prefix = self.prefix_extra[1].clone()
+                    self.base.set_prefix(&self.prefix_extras[1]);
                 }
             }
-            block::Value::new((volume, self.base.get_color(volume)))
+            Value::new(volume)
         } else {
-            block::Value::None
+            Value::Invalid
         }
     }
 }

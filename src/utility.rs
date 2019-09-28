@@ -1,6 +1,6 @@
 /*
-  status bar for i3like wms like i3, sway, etc...
-  Copyright (C) 2017 Oleg Keri
+  status bar for tiling wms like i3, sway, etc...
+  Copyright (C) 2019 Oleg Keri
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -14,38 +14,16 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 
-use std::{mem, ptr, io, fs};
+use std::{fs, io, mem, ptr, str};
 
 pub const SIGRTMIN: i32 = 34;
 
-pub fn read_file(filename: &str) -> Result<String, io::Error> {
-    use std::io::Read;
-    let file = fs::File::open(&filename);
-    if file.is_err() {
-        return Err(file.err().unwrap());
-    }
-    let mut data = String::new();
-    match file.unwrap().read_to_string(&mut data) {
-        Ok(_) => Ok(data),
-        Err(e) => Err(e),
-    }
-}
-
 pub fn read_filen(filename: &str, max: usize) -> Result<String, io::Error> {
     use std::io::Read;
-    use std::str;
-
-    let file = fs::File::open(&filename);
-    if file.is_err() {
-        return Err(file.err().unwrap());
-    }
-
+    let mut file = fs::File::open(&filename)?;
     let mut buf = vec![0u8; max];
-
-    match file.unwrap().read_exact(&mut buf) {
-        Ok(_) => Ok(String::from(str::from_utf8(&buf).unwrap())),
-        Err(e) => Err(e),
-    }
+    file.read_exact(&mut buf)
+        .map(|_| String::from(str::from_utf8(&buf).unwrap()))
 }
 
 pub fn gcd(i1: u32, i2: u32) -> u32 {
@@ -69,13 +47,5 @@ pub fn signal(signal: i32, action: fn(i32)) {
             sigaction.sa_sigaction = action as usize;
             libc::sigaction(signal, &sigaction, ptr::null_mut());
         }
-    }
-}
-
-pub fn read_color(input: &str, default: u32) -> u32 {
-    if input.chars().next().expect("invalid color value") == '#' {
-        i64::from_str_radix(&input[1..], 16).unwrap_or(default as i64) as u32
-    } else {
-        i64::from_str_radix(input, 16).unwrap_or(default as i64) as u32
     }
 }

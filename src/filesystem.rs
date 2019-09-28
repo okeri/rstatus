@@ -1,6 +1,6 @@
 /*
-  status bar for i3like wms like i3, sway, etc...
-  Copyright (C) 2017 Oleg Keri
+  status bar for tiling wms like i3, sway, etc...
+  Copyright (C) 2019 Oleg Keri
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -14,36 +14,30 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 
-use block;
-use libc;
+use super::base::{Base, Value};
+use super::block;
+use serde::Deserialize;
 
+#[derive(Deserialize)]
 pub struct Block {
-    base: block::Base,
+    #[serde(flatten)]
+    base: Base,
     path: String,
-}
-
-impl Block {
-    pub fn new(base: block::Base, path: String) -> Block {
-        Block {
-            base: base,
-            path: path,
-        }
-    }
 }
 
 impl block::Block for Block {
     impl_Block!();
     fn update(&mut self) {
-        use std::mem;
         use std::ffi::CString;
+        use std::mem;
         unsafe {
             let path = CString::new(self.path.clone()).unwrap();
             let mut usage: libc::statvfs = mem::zeroed();
-            self.base.data = if libc::statvfs(path.as_ptr() as *const i8, &mut usage) == -1 {
-                block::Value::None
+            self.base.value = if libc::statvfs(path.as_ptr() as *const i8, &mut usage) == -1 {
+                Value::Invalid
             } else {
                 let used = (100 * (usage.f_blocks - usage.f_bfree) / usage.f_blocks) as u32;
-                block::Value::new((used, self.base.get_color(used)))
+                Value::new(used)
             };
         }
     }

@@ -1,11 +1,12 @@
 [package]
 name = "rstatus"
-version = "0.8.2"
+version = "0.9.2"
 authors = ["Oleg Keri <ezhi99@gmail.com>"]
+edition = "2018"
 
 [dependencies]
-yaml-rust = "0.3.5"
 libc = "*"
 time = "*"
-
+serde = { version = "*", features = ["derive"] }
+serde_yaml = "*"
 

@@ -1,6 +1,6 @@
 /*
-  status bar for i3like wms like i3, sway, etc...
-  Copyright (C) 2017 Oleg Keri
+  status bar for tiling wms like i3, sway, etc...
+  Copyright (C) 2019 Oleg Keri
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -14,30 +14,28 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 
-extern crate time;
-use block;
+use super::base::{Base, Value};
+use super::block;
+use serde::Deserialize;
 
+#[derive(Deserialize)]
 pub struct Block {
-    base: block::Base,
+    #[serde(flatten)]
+    base: Base,
+    #[serde(default = "default_format")]
     format: String,
-}
-
-impl Block {
-    pub fn new(base: block::Base, format: String) -> Block {
-        Block {
-            base: base,
-            format: format,
-        }
-    }
 }
 
 impl block::Block for Block {
     impl_Block!();
     fn update(&mut self) {
-        self.base.data = block::Value::new((
+        self.base.value = Value::new(
             time::strftime(self.format.as_ref(), &time::now())
                 .unwrap_or_else(|_| "bad format".to_string()),
-            self.base.color
-        ));
+        );
     }
+}
+
+fn default_format() -> String {
+    "%d.%m.%Y %H:%M".to_string()
 }

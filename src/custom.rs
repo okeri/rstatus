@@ -1,6 +1,6 @@
 /*
-  status bar for i3like wms like i3, sway, etc...
-  Copyright (C) 2017 Oleg Keri
+  status bar for tiling wms like i3, sway, etc...
+  Copyright (C) 2019 Oleg Keri
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -14,31 +14,25 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 
-use block;
-use utility;
+use super::base::{Base, Value};
+use super::block;
+use serde::Deserialize;
 
+#[derive(Deserialize)]
 pub struct Block {
-    base: block::Base,
+    #[serde(flatten)]
+    base: Base,
     command: String,
+    #[serde(default)]
     retry: u32,
-}
-
-impl Block {
-    pub fn new(base: block::Base, command: String, retry: u32) -> Block {
-        Block {
-            base: base,
-            command: command,
-            retry: retry,
-        }
-    }
 }
 
 impl block::Block for Block {
     impl_Block!();
 
     fn update(&mut self) {
-        use std::str;
         use std::process::Command;
+        use std::str;
         let output = Command::new("sh")
             .arg("-c")
             .arg(&self.command)
@@ -50,27 +44,36 @@ impl block::Block for Block {
             .to_string();
 
         if !output.status.success() {
-            self.base.info.retry = self.retry;
+            self.base.set_retry(self.retry);
             return;
         }
 
         let data: Vec<&str> = strval.split('\n').collect();
-        self.base.data = match data.len() {
-            0 => block::Value::None,
+        self.base.value = match data.len() {
+            0 => Value::Invalid,
             1 => {
                 let value = data[0].parse::<u32>();
                 if value.is_ok() {
-                    block::Value::new((data[0], self.base.get_color(value.unwrap())))
+                    Value::new(value.unwrap())
                 } else {
-                    block::Value::new(data[0])
+                    Value::new(data[0])
                 }
             }
             _ => {
-                block::Value::new((
-                    data[0],
-                    utility::read_color(data[1], block::DEFAULT_COLOR),
-                ))
+                self.base.set_color(read_color(data[1], 0xffffff));
+                Value::new(data[0])
             }
         }
     }
+}
+
+pub fn read_color(input: &str, default: u32) -> u32 {
+    if let Some(first) = input.chars().next() {
+        return if first == '#' {
+            i64::from_str_radix(&input[1..], 16).unwrap_or(default as i64) as u32
+        } else {
+            i64::from_str_radix(input, 16).unwrap_or(default as i64) as u32
+        }
+    }
+    default
 }
