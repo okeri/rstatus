@@ -112,7 +112,7 @@ fn main() {
             std::thread::sleep(std::time::Duration::from_secs(gcd as u64));
             for block in blocks.lock().unwrap().iter_mut() {
                 let interval = block.interval();
-                if interval != 0 && count % interval as u64 == 0 {
+                if interval != 0 && (block.retry(gcd) || count % interval as u64 == 0) {
                     block.update();
                 }
             }
