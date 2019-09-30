@@ -17,7 +17,7 @@
 use super::base::{Base, Value};
 use super::block;
 use serde::Deserialize;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 #[derive(Deserialize)]
 pub struct Status {
@@ -33,7 +33,7 @@ pub struct Block {
     base: Base,
     sensor: String,
     #[serde(default = "default_statuses")]
-    statuses: HashMap<String, Status>,
+    statuses: BTreeMap<String, Status>,
 }
 
 impl block::Block for Block {
@@ -61,8 +61,8 @@ impl block::Block for Block {
     }
 }
 
-fn default_statuses() -> HashMap<String, Status> {
-    HashMap::new()
+fn default_statuses() -> BTreeMap<String, Status> {
+    BTreeMap::new()
 }
 
 fn status2rstatus(status: &str) -> &str {
