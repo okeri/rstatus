@@ -1,0 +1,91 @@
+  - custom:
+      command: 'echo test'
+      interval: 15
+      custom_separator: '\ue0b2'
+      bgcolor: '#202020'
+      retry: 5
+
+  - temperature:
+      sensor: '/sys/class/thermal/thermal_zone0/temp'
+      prefix: '  '
+      custom_separator: '\ue0b2'
+      bgcolor: '#301010'
+      suffix: " °C "
+      interval: 3
+      thresholds:
+        0: '#FFFFFF'
+        60: '#FFF600'
+        70: '#FF0000'
+
+  - memory:
+      prefix: '  '
+      custom_separator: '\ue0b2'
+      bgcolor: '#501010'
+      suffix: '% '
+      interval: 5
+      thresholds:
+        0: '#FFFFFF'
+        40: '#FFF600'
+        70: '#FF0000'
+
+  - filesystem:
+      path: '/tmp'
+      interval: 5
+      custom_separator: '\ue0b2'
+      bgcolor: '#501010'
+      prefix: '  '
+      suffix: '% '
+      thresholds:
+        0: '#FFFFFF'
+        40: '#FFF600'
+        70: '#FF0000'
+
+  - volume:
+      mixer: 'Master'
+      custom_separator: '\ue0b2'
+      bgcolor: '#202040'
+      signal: 10
+      prefix: '  '
+      suffix: '% '
+      invalid: " ♪ muted "
+      invalid_color: "#FFF600"
+
+  - wifi:
+      interface: "wlan0"
+      interval: 4
+      prefix: "  "
+      suffix: "% "
+      invalid: " off "
+      invalid_color: "#FF0000"
+      bgcolor: '#101010'
+      custom_separator: '\ue0b2'
+      thresholds:
+        0: '#FF0000'
+        20: '#FFAE00'
+        50: '#FFF600'
+        80: '#00FF00'
+
+  - battery:
+      sensor: '/sys/class/power_supply/BAT1'
+      interval: 10
+      custom_separator: '\ue0b2'
+      color: '#101010'
+      bgcolor: '#AAAAAA'
+      invalid: "no battery"
+      statuses:
+        offline:
+          prefix: '  '
+          suffix: '% '
+        online:
+          prefix: ' ⚡ '
+          suffix: '% '
+        full:
+          prefix: '  '
+          suffix: '% '
+
+  - time:
+      format: '   %d.%m.%Y  %H:%M'
+      custom_separator: '\ue0b2'
+      color: '#CCCCCC'
+      bgcolor: '#000000'
+      interval: 1
