@@ -94,8 +94,8 @@ pub struct Base {
     #[serde(default = "default_zero")]
     separator_width: u32,
     /// use self-rendered arrow as separator
-    #[serde(default = "default_false")]
-    separator_arrow: bool,
+    #[serde(default = "default_str_none")]
+    custom_separator: Option<String>,
     /// foreground color for value
     #[serde(default = "default_color", deserialize_with = "parse_color")]
     color: u32,
@@ -159,8 +159,9 @@ impl Base {
     }
     
     pub fn render(&self, prev_bg: Option<u32>) {
-        if self.separator_arrow && self.bgcolor.is_some() {
-            print!("{{\"full_text\":\"\\ue0b2\",\"separator\":false,\"separator_block_width\":0,\"color\":\"#{:06X}\"",
+        if self.custom_separator.is_some() && self.bgcolor.is_some() {
+            print!("{{\"full_text\":\"{}\",\"separator\":false,\"separator_block_width\":0,\"color\":\"#{:06X}\"",
+                   self.custom_separator.as_ref().unwrap(),
                    self.bgcolor.unwrap());
             Base::render_bg(prev_bg);
             print!("}},");
@@ -181,7 +182,7 @@ impl Base {
                     .add(
                         &self.suffix,
                         suffix_color,
-                        if self.separator_arrow {
+                        if self.custom_separator.is_some() {
                             RenderFlags::None
                         } else {
                             RenderFlags::Separator
@@ -199,7 +200,7 @@ impl Base {
                 .add(
                     &self.suffix,
                     self.suffix_color.unwrap_or(self.color),
-                    if self.separator_arrow {
+                    if self.custom_separator.is_some() {
                         RenderFlags::None
                     } else {
                         RenderFlags::Separator
@@ -210,7 +211,7 @@ impl Base {
                 .add(
                     &self.invalid,
                     self.invalid_color,
-                    if self.separator_arrow {
+                    if self.custom_separator.is_some() {
                         RenderFlags::Name
                     } else {
                         RenderFlags::Separator | RenderFlags::Name
@@ -338,6 +339,10 @@ fn default_false() -> bool {
 }
 
 fn default_none() -> Option<u32> {
+    None
+}
+
+fn default_str_none() -> Option<String> {
     None
 }
 
