@@ -16,6 +16,7 @@
 
 use super::block_builder::{BlockBuilder, RenderFlags, SubBlock};
 use serde::{Deserialize, Deserializer};
+use std::collections::BTreeMap;
 
 #[derive(Deserialize)]
 pub enum Value {
@@ -70,13 +71,7 @@ impl Value {
     }
 }
 
-#[derive(Deserialize)]
-pub struct Threshold {
-    #[serde(rename = "threshold")]
-    value: u32,
-    #[serde(deserialize_with = "parse_color")]
-    color: u32,
-}
+type Thresholds = BTreeMap<u32, u32>;
 
 #[derive(Deserialize)]
 pub struct Base {
@@ -84,40 +79,40 @@ pub struct Base {
     #[serde(skip)]
     pub value: Value,
     /// interval for update block
-    #[serde(default = "zero")]
+    #[serde(default = "default_zero")]
     interval: u32,
     /// signal for update block
-    #[serde(default = "zero")]
+    #[serde(default = "default_zero")]
     signal: u32,
     /// name of the block
     #[serde(skip)]
     name: String,
     /// retry interval in case of value is invalid
-    #[serde(skip, default = "zero")]
+    #[serde(skip, default = "default_zero")]
     retry: u32,
     /// with of separator
-    #[serde(default = "zero")]
+    #[serde(default = "default_zero")]
     separator_width: u32,
     /// use self-rendered arrow as separator
-    #[serde(default = "false_value")]
+    #[serde(default = "default_false")]
     separator_arrow: bool,
     /// foreground color for value
     #[serde(default = "default_color", deserialize_with = "parse_color")]
     color: u32,
     /// background color for value
-    #[serde(default = "default_background", deserialize_with = "parse_color_maybe")]
+    #[serde(default = "default_none", deserialize_with = "parse_color_maybe")]
     bgcolor: Option<u32>,
     /// prefix for value
     #[serde(default)]
     prefix: String,
     /// prefix color for value
-    #[serde(default = "default_background", deserialize_with = "parse_color_maybe")]
+    #[serde(default = "default_none", deserialize_with = "parse_color_maybe")]
     prefix_color: Option<u32>,
     /// suffix for value
     #[serde(default)]
     suffix: String,
     /// suffix color
-    #[serde(default = "default_background", deserialize_with = "parse_color_maybe")]
+    #[serde(default = "default_none", deserialize_with = "parse_color_maybe")]
     suffix_color: Option<u32>,
     /// invalid value to be shown
     #[serde(default = "default_invalid")]
@@ -125,9 +120,12 @@ pub struct Base {
     /// color of invalid value
     #[serde(default = "default_invalid_color", deserialize_with = "parse_color")]
     invalid_color: u32,
+    /// fix prefix and suffix color depend on threshold
+    #[serde(default = "default_false")]
+    threshold_fix: bool,
     /// color thresholds
-    #[serde(default = "default_thresholds")]
-    thresholds: Vec<Threshold>,
+    #[serde(default = "default_thresholds", deserialize_with = "parse_thresholds")]
+    thresholds: Thresholds,
 }
 
 impl Base {
@@ -135,15 +133,6 @@ impl Base {
         if let Some(c) = bg {
             print!(",\"background\":\"#{:06X}\"", c);
         }
-    }
-
-    fn get_color(&self, value: u32) -> u32 {
-        for to in self.thresholds.iter().rev() {
-            if value >= to.value {
-                return to.color;
-            }
-        }
-        self.color
     }
 
     fn render_subblock(&self, subblock: &SubBlock) {
@@ -160,6 +149,15 @@ impl Base {
         print!(",\"color\":\"#{:06X}\"}}", subblock.color);
     }
 
+    fn get_to_color(&self, value: u32) -> u32 {
+        for (to, color) in self.thresholds.iter().rev() {
+            if value >= *to {
+                return *color;
+            }
+        }
+        self.color
+    }
+    
     pub fn render(&self, prev_bg: Option<u32>) {
         if self.separator_arrow && self.bgcolor.is_some() {
             print!("{{\"full_text\":\"\\ue0b2\",\"separator\":false,\"separator_block_width\":0,\"color\":\"#{:06X}\"",
@@ -170,17 +168,19 @@ impl Base {
 
         let subblocks = match self.value {
             Value::Int(value) => {
-                let color = self.get_color(value);
+                let color = self.get_to_color(value);
+                let mut prefix_color = self.prefix_color.unwrap_or(color);
+                let mut suffix_color = self.suffix_color.unwrap_or(color);
+                if self.threshold_fix && color != self.color {
+                    prefix_color = color;
+                    suffix_color = color;
+                }
                 BlockBuilder::new()
-                    .add(
-                        &self.prefix,
-                        self.prefix_color.unwrap_or(color),
-                        RenderFlags::None,
-                    )
+                    .add(&self.prefix, prefix_color, RenderFlags::None)
                     .add(&value.to_string(), color, RenderFlags::Name)
                     .add(
                         &self.suffix,
-                        self.suffix_color.unwrap_or(color),
+                        suffix_color,
                         if self.separator_arrow {
                             RenderFlags::None
                         } else {
@@ -305,11 +305,23 @@ where
     Ok(None)
 }
 
+fn parse_thresholds<'de, D>(deserializer: D) -> Result<Thresholds, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let ms: BTreeMap<u32, String> = BTreeMap::deserialize(deserializer)?;
+    let mut result = Thresholds::new();
+    for (threshold, color) in ms {
+        result.insert(threshold, read_color(&color));
+    }
+    Ok(result)
+}
+
 fn default_invalid() -> String {
     "invalid".to_string()
 }
 
-fn zero() -> u32 {
+fn default_zero() -> u32 {
     0
 }
 
@@ -321,16 +333,16 @@ fn default_invalid_color() -> u32 {
     0xff0000
 }
 
-fn false_value() -> bool {
+fn default_false() -> bool {
     false
 }
 
-fn default_background() -> Option<u32> {
+fn default_none() -> Option<u32> {
     None
 }
 
-fn default_thresholds() -> Vec<Threshold> {
-    Vec::new()
+fn default_thresholds() -> Thresholds {
+    Thresholds::new()
 }
 
 impl Default for Value {
