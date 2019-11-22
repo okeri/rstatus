@@ -123,6 +123,9 @@ pub struct Base {
     /// fix prefix and suffix color depend on threshold
     #[serde(default = "default_false")]
     threshold_fix: bool,
+    /// ignore prefix and suffix
+    #[serde(skip, default = "default_false")]
+    ignore_decoration: bool,
     /// color thresholds
     #[serde(default = "default_thresholds", deserialize_with = "parse_thresholds")]
     thresholds: Thresholds,
@@ -157,7 +160,7 @@ impl Base {
         }
         self.color
     }
-    
+
     pub fn render(&self, prev_bg: Option<u32>) {
         if self.custom_separator.is_some() && self.bgcolor.is_some() {
             print!("{{\"full_text\":\"{}\",\"separator\":false,\"separator_block_width\":0,\"color\":\"#{:06X}\"",
@@ -166,6 +169,15 @@ impl Base {
             Base::render_bg(prev_bg);
             print!("}},");
         }
+
+        let suffix_flags = |flags: RenderFlags| {
+            flags
+                | if self.custom_separator.is_some() {
+                    RenderFlags::None
+                } else {
+                    RenderFlags::Separator
+                }
+        };
 
         let subblocks = match self.value {
             Value::Int(value) => {
@@ -176,46 +188,44 @@ impl Base {
                     prefix_color = color;
                     suffix_color = color;
                 }
-                BlockBuilder::new()
-                    .add(&self.prefix, prefix_color, RenderFlags::None)
-                    .add(&value.to_string(), color, RenderFlags::Name)
-                    .add(
-                        &self.suffix,
-                        suffix_color,
-                        if self.custom_separator.is_some() {
-                            RenderFlags::None
-                        } else {
-                            RenderFlags::Separator
-                        },
-                    )
-                    .get()
+                if self.ignore_decoration {
+                    BlockBuilder::new()
+                        .add(&value.to_string(), color, suffix_flags(RenderFlags::Name))
+                        .get()
+                } else {
+                    BlockBuilder::new()
+                        .add(&self.prefix, prefix_color, RenderFlags::None)
+                        .add(&value.to_string(), color, RenderFlags::Name)
+                        .add(&self.suffix, suffix_color, suffix_flags(RenderFlags::None))
+                        .get()
+                }
             }
-            Value::Str(ref value) => BlockBuilder::new()
-                .add(
-                    &self.prefix,
-                    self.prefix_color.unwrap_or(self.color),
-                    RenderFlags::None,
-                )
-                .add(value, self.color, RenderFlags::Name)
-                .add(
-                    &self.suffix,
-                    self.suffix_color.unwrap_or(self.color),
-                    if self.custom_separator.is_some() {
-                        RenderFlags::None
-                    } else {
-                        RenderFlags::Separator
-                    },
-                )
-                .get(),
+            Value::Str(ref value) => {
+                if self.ignore_decoration {
+                    BlockBuilder::new()
+                        .add(value, self.color, suffix_flags(RenderFlags::Name))
+                        .get()
+                } else {
+                    BlockBuilder::new()
+                        .add(
+                            &self.prefix,
+                            self.prefix_color.unwrap_or(self.color),
+                            RenderFlags::None,
+                        )
+                        .add(value, self.color, RenderFlags::Name)
+                        .add(
+                            &self.suffix,
+                            self.suffix_color.unwrap_or(self.color),
+                            suffix_flags(RenderFlags::None),
+                        )
+                        .get()
+                }
+            }
             Value::Invalid => BlockBuilder::new()
                 .add(
                     &self.invalid,
                     self.invalid_color,
-                    if self.custom_separator.is_some() {
-                        RenderFlags::Name
-                    } else {
-                        RenderFlags::Separator | RenderFlags::Name
-                    },
+                    suffix_flags(RenderFlags::Name),
                 )
                 .get(),
         };
@@ -273,6 +283,10 @@ impl Base {
 
     pub fn set_retry(&mut self, retry: u32) {
         self.retry = retry;
+    }
+
+    pub fn set_ignore_decoration(&mut self, value: bool) {
+        self.ignore_decoration = value;
     }
 }
 

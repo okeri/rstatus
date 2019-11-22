@@ -29,7 +29,7 @@ macro_rules! all_blocks {
             temperature,
             time,
             volume,
-            wifi,
+            network,
         );
     };
 }

@@ -43,8 +43,7 @@
       invalid: "♪ muted"
       invalid_color: "#FFF600"
 
-  - wifi:
-      interface: "wlan0"
+  - network:
       interval: 4
       prefix: " "
       suffix: "%"
