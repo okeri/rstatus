@@ -32,6 +32,30 @@ enum MixerValue {
     Volume(u32),
 }
 
+impl MixerValue {
+    pub fn to_value(&self) -> Value {
+        match &self {
+            MixerValue::Volume(vol)=> {
+                Value::new(*vol)
+            }
+            _ => {
+                Value::Invalid
+            }
+        }
+    }
+
+    pub fn ok(&self) -> bool {
+        match &self {
+           MixerValue::Volume(_)=> {
+                true
+            }
+            _ => {
+                false
+            }
+        }
+    }
+}
+
 fn get_mixer_value(mixer: &str) -> MixerValue {
     use std::process::Command;
     use std::str;
@@ -47,11 +71,12 @@ fn get_mixer_value(mixer: &str) -> MixerValue {
     .expect("process amixer returned bad output")
     .to_string();
     let data: Vec<&str> = output.split_whitespace().collect();
-    return if data.len() == 0 || data[data.len() - 1] != "[on]" {
+    return if data.len() == 0 || data[data.len() - 1] == "[off]" {
         MixerValue::Off
     } else {
+        let index = if data[data.len() - 1].as_bytes()[1] == 111u8 {3} else {2};
         MixerValue::Volume(
-            data[data.len() - 3][1..data[data.len() - 3].len() - 2]
+            data[data.len() - index][1..data[data.len() - index].len() - 2]
                 .parse::<u32>()
                 .expect("amixer output parse error"),
         )
@@ -65,20 +90,21 @@ fn empty_extras() -> Vec<String> {
 impl block::Block for Block {
     impl_Block!();
     fn update(&mut self) {
-        self.base.value = if let MixerValue::Volume(volume) = get_mixer_value(&self.mixer) {
+        self.base.value = if let MixerValue::Volume(volume) = get_mixer_value("Master") {
             if self.prefix_extras.len() > 1 {
-                if let MixerValue::Off = get_mixer_value("Speaker") {
-                    if let MixerValue::Volume(_) = get_mixer_value("Headphone") {
-                        self.base.set_prefix(&self.prefix_extras[0]);
-                    } else {
-                        self.base.set_prefix(&self.prefix_extras[1]);
-                    }
+                if !get_mixer_value("Speaker").ok() && get_mixer_value("Headphone").ok() {
+                    self.base.set_prefix(&self.prefix_extras[0]);
                 } else {
                     self.base.set_prefix(&self.prefix_extras[1]);
                 }
             }
-            Value::new(volume)
-        } else {
+            if self.mixer != "Master" {
+                get_mixer_value(&self.mixer).to_value()
+            } else {
+                Value::new(volume)
+            }
+        }
+        else {
             Value::Invalid
         }
     }
