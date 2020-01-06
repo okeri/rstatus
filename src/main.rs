@@ -25,13 +25,13 @@ mod utility;
 
 all_blocks! {mod_blocks}
 
-use std::sync::{Arc, Mutex, Once, ONCE_INIT};
+use std::sync::{Arc, Mutex, Once};
 
 type BlocksWrapper = Arc<Mutex<blocks::BlocksCollection>>;
 
 fn blocks() -> BlocksWrapper {
     static mut SINGLETON: *const BlocksWrapper = 0 as *const BlocksWrapper;
-    static ONCE: Once = ONCE_INIT;
+    static ONCE: Once = Once::new();
 
     unsafe {
         ONCE.call_once(|| {

@@ -40,7 +40,7 @@ pub fn gcd(i1: u32, i2: u32) -> u32 {
 
 pub fn signal(signal: i32, action: fn(i32)) {
     unsafe {
-        let mut sigset = mem::uninitialized();
+        let mut sigset = mem::MaybeUninit::uninit().assume_init();
         if libc::sigfillset(&mut sigset) != -1 {
             let mut sigaction: libc::sigaction = mem::zeroed();
             sigaction.sa_mask = sigset;

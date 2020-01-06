@@ -1,11 +1,12 @@
 [package]
 name = "rstatus"
-version = "0.9.3"
+version = "0.9.4"
 authors = ["Oleg Keri <ezhi99@gmail.com>"]
 edition = "2018"
 
 [dependencies]
 libc = "*"
+alsa = "*"
 time = "*"
 serde = { version = "*", features = ["derive"] }
 serde_yaml = "*"

@@ -17,12 +17,15 @@
 use super::base::{Base, Value};
 use super::block;
 use serde::Deserialize;
+use alsa::{Mixer, mixer::{SelemId, SelemChannelId}};
 
 #[derive(Deserialize)]
 pub struct Block {
     #[serde(flatten)]
     base: Base,
     mixer: String,
+    #[serde(default = "default_card")]
+    card: String,
     #[serde(default = "empty_extras")]
     prefix_extras: Vec<String>,
 }
@@ -35,76 +38,72 @@ enum MixerValue {
 impl MixerValue {
     pub fn to_value(&self) -> Value {
         match &self {
-            MixerValue::Volume(vol)=> {
-                Value::new(*vol)
-            }
-            _ => {
-                Value::Invalid
-            }
+            MixerValue::Volume(vol) => Value::new(*vol),
+            _ => Value::Invalid,
         }
     }
 
     pub fn ok(&self) -> bool {
         match &self {
-           MixerValue::Volume(_)=> {
-                true
-            }
-            _ => {
-                false
-            }
+            MixerValue::Volume(_) => true,
+            _ => false,
         }
     }
-}
-
-fn get_mixer_value(mixer: &str) -> MixerValue {
-    use std::process::Command;
-    use std::str;
-
-    let output = str::from_utf8(
-        &Command::new("amixer")
-            .arg("get")
-            .arg(&mixer)
-            .output()
-            .expect("failed to find amixer")
-            .stdout,
-    )
-    .expect("process amixer returned bad output")
-    .to_string();
-    let data: Vec<&str> = output.split_whitespace().collect();
-    return if data.len() == 0 || data[data.len() - 1] == "[off]" {
-        MixerValue::Off
-    } else {
-        let index = if data[data.len() - 1].as_bytes()[1] == 111u8 {3} else {2};
-        MixerValue::Volume(
-            data[data.len() - index][1..data[data.len() - index].len() - 2]
-                .parse::<u32>()
-                .expect("amixer output parse error"),
-        )
-    };
 }
 
 fn empty_extras() -> Vec<String> {
     Vec::new()
 }
 
+fn default_card() -> String {
+    "default".to_owned()
+}
+
+impl Block {
+    fn mixer_value(&self, mixer: &str) -> MixerValue {
+	let mixer_device = Mixer::new(&self.card, false).ok();
+	if let Some(device) = &mixer_device {
+	    let id = SelemId::new(mixer, 0);
+	    if let Some(selem) = device.find_selem(&id) {
+		if selem.has_playback_switch() {
+		    if let Ok(value) = selem.get_playback_switch(SelemChannelId::FrontLeft)  {
+			if value == 0 {
+			    return MixerValue::Off
+			}
+		    }
+		}
+		let (min, max) = selem.get_playback_volume_range();
+		if let Ok(value) = selem.get_playback_volume(SelemChannelId::FrontLeft)
+		{
+		    return MixerValue::Volume(((value - min) * 100 / (max - min)) as u32)
+		}
+	    }
+	}
+	MixerValue::Off
+    }
+}
+
 impl block::Block for Block {
     impl_Block!();
+   
     fn update(&mut self) {
-        self.base.value = if let MixerValue::Volume(volume) = get_mixer_value("Master") {
+        self.base.value = if let MixerValue::Volume(volume) = self.mixer_value("Master")
+        {
             if self.prefix_extras.len() > 1 {
-                if !get_mixer_value("Speaker").ok() && get_mixer_value("Headphone").ok() {
+                if !self.mixer_value("Speaker").ok()
+                    && self.mixer_value("Headphone").ok()
+                {
                     self.base.set_prefix(&self.prefix_extras[0]);
                 } else {
                     self.base.set_prefix(&self.prefix_extras[1]);
                 }
             }
             if self.mixer != "Master" {
-                get_mixer_value(&self.mixer).to_value()
+                self.mixer_value(&self.mixer).to_value()
             } else {
                 Value::new(volume)
             }
-        }
-        else {
+        } else {
             Value::Invalid
         }
     }
