@@ -35,6 +35,12 @@ impl ValueConstructor for u32 {
     }
 }
 
+impl ValueConstructor for Option<u32> {
+    fn new(&self) -> Value {
+	self.map_or(Value::Invalid, |v| Value::Int(v))
+    }
+}
+
 impl ValueConstructor for String {
     fn new(&self) -> Value {
         Value::Str(self.clone())
@@ -348,10 +354,6 @@ fn default_invalid_color() -> u32 {
     0xff0000
 }
 
-fn default_false() -> bool {
-    false
-}
-
 fn default_none() -> Option<u32> {
     None
 }
@@ -362,6 +364,10 @@ fn default_str_none() -> Option<String> {
 
 fn default_thresholds() -> Thresholds {
     Thresholds::new()
+}
+
+pub fn default_false() -> bool {
+    false
 }
 
 impl Default for Value {
