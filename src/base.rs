@@ -37,7 +37,7 @@ impl ValueConstructor for u32 {
 
 impl ValueConstructor for Option<u32> {
     fn new(&self) -> Value {
-	self.map_or(Value::Invalid, |v| Value::Int(v))
+        self.map_or(Value::Invalid, |v| Value::Int(v))
     }
 }
 
