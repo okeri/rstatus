@@ -297,10 +297,14 @@ impl Base {
 }
 
 fn read_color(input: &str) -> u32 {
-    if input.chars().next().expect("invalid color value") == '#' {
-        i64::from_str_radix(&input[1..], 16).expect("invalid color value") as u32
+    if let Some(c) = input.chars().next() {
+        if c == '#' {
+            i64::from_str_radix(&input[1..], 16).unwrap_or(0) as u32
+        } else {
+            i64::from_str_radix(input, 16).unwrap_or(0) as u32
+        }
     } else {
-        i64::from_str_radix(input, 16).expect("invalid color value") as u32
+        0
     }
 }
 

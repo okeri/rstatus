@@ -28,11 +28,10 @@ pub struct Block {
 impl block::Block for Block {
     impl_Block!();
     fn update(&mut self) {
-        self.base.value = Value::new(std::fs::read_to_string(&self.sensor).map(|text| {
-            text.trim()
-                .parse::<u32>()
-                .expect(&format!("expected integer in {}", self.sensor))
-                / 1000
-        }))
+        self.base.value = Value::new(
+            std::fs::read_to_string(&self.sensor)
+                .ok()
+                .and_then(|text| text.trim().parse::<u32>().ok().map(|v| v / 1000)),
+        )
     }
 }
