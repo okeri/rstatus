@@ -5,9 +5,9 @@ authors = ["Oleg Keri <ezhi99@gmail.com>"]
 edition = "2018"
 
 [dependencies]
+chrono = "*"
 libc = "*"
-alsa = "*"
-time = "*"
+alsa = { git = "https://github.com/okeri/alsa-rs.git" , branch = "add_mixer_handle_events" }
 serde = { version = "*", features = ["derive"] }
 serde_yaml = "*"
 

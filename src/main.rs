@@ -20,6 +20,7 @@ mod block;
 
 #[macro_use]
 mod blocks;
+mod alsa_dev;
 mod block_builder;
 mod utility;
 

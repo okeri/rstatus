@@ -1,6 +1,6 @@
 /*
   status bar for tiling wms like i3, sway, etc...
-  Copyright (C) 2019 Oleg Keri
+  Copyright (C) 2020 Oleg Keri
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -14,10 +14,10 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 
-use super::base::{Base, Value};
+use super::alsa_dev::AlsaDevice;
+use super::base::{default_false, Base, Value};
 use super::block;
 use serde::Deserialize;
-use alsa::{Mixer, mixer::{SelemId, SelemChannelId}};
 
 #[derive(Deserialize)]
 pub struct Block {
@@ -28,27 +28,18 @@ pub struct Block {
     card: String,
     #[serde(default = "empty_extras")]
     prefix_extras: Vec<String>,
-}
-
-enum MixerValue {
-    Off,
-    Volume(u32),
-}
-
-impl MixerValue {
-    pub fn to_value(&self) -> Value {
-        match &self {
-            MixerValue::Volume(vol) => Value::new(*vol),
-            _ => Value::Invalid,
-        }
-    }
-
-    pub fn ok(&self) -> bool {
-        match &self {
-            MixerValue::Volume(_) => true,
-            _ => false,
-        }
-    }
+    #[serde(default = "default_false")]
+    jack_switch_outputs: bool,
+    #[serde(default = "default_false")]
+    jack_mute_on_unplug: bool,
+    #[serde(default = "default_false")]
+    jack_unmute_on_plug: bool,
+    #[serde(skip, default = "default_false")]
+    jack_plugged: bool,
+    #[serde(skip, default = "default_false")]
+    master_exists: bool,
+    #[serde(skip, default = "default_none")]
+    dev: Option<AlsaDevice>,
 }
 
 fn empty_extras() -> Vec<String> {
@@ -59,52 +50,85 @@ fn default_card() -> String {
     "default".to_owned()
 }
 
+fn default_none() -> Option<AlsaDevice> {
+    None
+}
+
 impl Block {
-    fn mixer_value(&self, mixer: &str) -> MixerValue {
-	let mixer_device = Mixer::new(&self.card, false).ok();
-	if let Some(device) = &mixer_device {
-	    let id = SelemId::new(mixer, 0);
-	    if let Some(selem) = device.find_selem(&id) {
-		if selem.has_playback_switch() {
-		    if let Ok(value) = selem.get_playback_switch(SelemChannelId::FrontLeft)  {
-			if value == 0 {
-			    return MixerValue::Off
-			}
-		    }
-		}
-		let (min, max) = selem.get_playback_volume_range();
-		if let Ok(value) = selem.get_playback_volume(SelemChannelId::FrontLeft)
-		{
-		    return MixerValue::Volume(((value - min) * 100 / (max - min)) as u32)
-		}
-	    }
-	}
-	MixerValue::Off
+    fn jack_plug_check(&mut self) {
+        if let Some(dev) = &self.dev {
+            if let Some(plugged) = dev.jack_plugged() {
+                if self.jack_plugged != plugged {
+                    self.jack_plugged = plugged;
+                    if plugged {
+                        if self.jack_switch_outputs {
+                            dev.set_mute("Speaker", true);
+                            dev.set_mute("Headphone", false);
+                        }
+                        if self.jack_unmute_on_plug {
+                            dev.set_mute("Master", false);
+                        }
+                    } else {
+                        if self.jack_switch_outputs {
+                            dev.set_mute("Speaker", false);
+                            dev.set_mute("Headphone", true);
+                        }
+                        if self.jack_mute_on_unplug {
+                            dev.set_mute("Master", true);
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
 impl block::Block for Block {
     impl_Block!();
-   
+
     fn update(&mut self) {
-        self.base.value = if let MixerValue::Volume(volume) = self.mixer_value("Master")
-        {
-            if self.prefix_extras.len() > 1 {
-                if !self.mixer_value("Speaker").ok()
-                    && self.mixer_value("Headphone").ok()
-                {
-                    self.base.set_prefix(&self.prefix_extras[0]);
-                } else {
-                    self.base.set_prefix(&self.prefix_extras[1]);
+        if self.dev.is_none() {
+            self.dev = AlsaDevice::new(&self.card);
+            if let Some(dev) = &self.dev {
+                if let Some(plugged) = dev.jack_plugged() {
+                    self.jack_plugged = plugged;
+                }
+                self.master_exists = dev.exists("Master");
+                let signal = self.signal();
+                if signal != 0 {
+                    dev.listen(&self.card, signal as i32);
                 }
             }
-            if self.mixer != "Master" {
-                self.mixer_value(&self.mixer).to_value()
+        } else {
+            if let Some(dev) = &self.dev {
+                dev.update();
+            }
+        }
+        self.jack_plug_check();
+        if let Some(dev) = &self.dev {
+            self.base.value = if self.master_exists {
+                if self.prefix_extras.len() > 1 {
+                    if dev.volume("Speaker").is_none() && dev.volume("Headphone").is_some() {
+                        self.base.set_prefix(&self.prefix_extras[0]);
+                    } else {
+                        self.base.set_prefix(&self.prefix_extras[1]);
+                    }
+                }
+
+                if let Some(volume) = dev.volume("Master") {
+                    if self.mixer != "Master" {
+                        Value::new(dev.volume(&self.mixer))
+                    } else {
+                        Value::new(volume)
+                    }
+                } else {
+                    Value::Invalid
+                }
             } else {
-                Value::new(volume)
+                Value::new(dev.volume(&self.mixer))
             }
         } else {
-            Value::Invalid
+            self.base.value = Value::Invalid
         }
     }
 }

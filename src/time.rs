@@ -16,6 +16,7 @@
 
 use super::base::{Base, Value};
 use super::block;
+use chrono::Local;
 use serde::Deserialize;
 
 #[derive(Deserialize)]
@@ -29,10 +30,7 @@ pub struct Block {
 impl block::Block for Block {
     impl_Block!();
     fn update(&mut self) {
-        self.base.value = Value::new(
-            time::strftime(self.format.as_ref(), &time::now())
-                .unwrap_or_else(|_| "bad format".to_string()),
-        );
+        self.base.value = Value::new(format!("{}", Local::now().format(&self.format)).to_owned());
     }
 }
 
