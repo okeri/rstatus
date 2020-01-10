@@ -56,3 +56,15 @@ pub fn notify(pid: i32, signal: i32) {
         kill(pid, signal + SIGRTMIN);
     }
 }
+
+pub fn read_color(input: &str, default: u32) -> u32 {
+    if let Some(first) = input.chars().next() {
+        if first == '#' {
+            i64::from_str_radix(&input[1..], 16).unwrap_or(default as i64) as u32
+        } else {
+            i64::from_str_radix(input, 16).unwrap_or(default as i64) as u32
+        }
+    } else {
+	default
+    }
+}

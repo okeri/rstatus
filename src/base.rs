@@ -15,6 +15,7 @@
 */
 
 use super::block_builder::{BlockBuilder, RenderFlags, SubBlock};
+use super::utility::read_color;
 use serde::{Deserialize, Deserializer};
 use std::collections::BTreeMap;
 
@@ -296,25 +297,13 @@ impl Base {
     }
 }
 
-fn read_color(input: &str) -> u32 {
-    if let Some(c) = input.chars().next() {
-        if c == '#' {
-            i64::from_str_radix(&input[1..], 16).unwrap_or(0) as u32
-        } else {
-            i64::from_str_radix(input, 16).unwrap_or(0) as u32
-        }
-    } else {
-        0
-    }
-}
-
 fn parse_color<'de, D>(deserializer: D) -> Result<u32, D::Error>
 where
     D: Deserializer<'de>,
 {
     let s: Option<String> = Option::deserialize(deserializer)?;
     if let Some(text) = s {
-        return Ok(read_color(&text));
+        return Ok(read_color(&text, 0));
     }
     Ok(0)
 }
@@ -325,7 +314,7 @@ where
 {
     let s: Option<String> = Option::deserialize(deserializer)?;
     if let Some(text) = s {
-        return Ok(Some(read_color(&text)));
+        return Ok(Some(read_color(&text, 0)));
     }
     Ok(None)
 }
@@ -337,7 +326,7 @@ where
     let ms: BTreeMap<u32, String> = BTreeMap::deserialize(deserializer)?;
     let mut result = Thresholds::new();
     for (threshold, color) in ms {
-        result.insert(threshold, read_color(&color));
+        result.insert(threshold, read_color(&color, 0));
     }
     Ok(result)
 }
