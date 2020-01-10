@@ -29,6 +29,20 @@ pub struct AlsaDevice {
 }
 
 impl AlsaDevice {
+    fn find_jack(hctl: &HCtl) -> Option<ElemId> {
+        hctl.load().ok()?;
+        for b in hctl.elem_iter() {
+            if let Ok(id) = b.get_id() {
+                if let Ok(name) = id.get_name() {
+                    if name.ends_with(" Jack") && !name.ends_with(" Phantom Jack") {
+                        return Some(id);
+                    }
+                }
+            }
+        }
+        None
+    }
+
     pub fn new(card: &str) -> Option<AlsaDevice> {
         if let Ok(mixer) = Mixer::new(card, false) {
             let mut result = AlsaDevice {
@@ -37,17 +51,7 @@ impl AlsaDevice {
                 jack: None,
             };
             if let Some(ref hctl) = result.hctl {
-                if hctl.load().is_ok() {
-                    for b in hctl.elem_iter() {
-                        if let Ok(id) = b.get_id() {
-                            let name = id.get_name().unwrap();
-                            if name.ends_with(" Jack") && !name.ends_with(" Phantom Jack") {
-                                result.jack = Some(id);
-                                break;
-                            }
-                        }
-                    }
-                }
+                result.jack = AlsaDevice::find_jack(hctl);
             }
             Some(result)
         } else {
@@ -59,9 +63,8 @@ impl AlsaDevice {
         if let Some(hctl) = &self.hctl {
             if let Some(ref id) = self.jack {
                 let jack = hctl.find_elem(id)?;
-                if let Ok(value) = jack.read() {
-                    return value.get_boolean(0);
-                }
+                let value = jack.read().ok()?;
+                return value.get_boolean(0);
             }
         }
         None
@@ -98,11 +101,10 @@ impl AlsaDevice {
             }
         }
         let (min, max) = selem.get_playback_volume_range();
-        if let Ok(value) = selem.get_playback_volume(SelemChannelId::FrontLeft) {
-            Some(((value - min) * 100 / (max - min)) as u32)
-        } else {
-            None
-        }
+        selem
+            .get_playback_volume(SelemChannelId::FrontLeft)
+            .ok()
+            .map(|value| ((value - min) * 100 / (max - min)) as u32)
     }
 
     pub fn listen(&self, card: &str, signal: i32) {
