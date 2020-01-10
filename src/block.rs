@@ -21,7 +21,6 @@ pub trait Block {
     fn signal(&self) -> u32;
     fn bgcolor(&self) -> Option<u32>;
     fn render(&self, prev_bg: Option<u32>);
-    fn retry(&mut self, interval: u32) -> bool;
 }
 
 macro_rules! impl_Block {
@@ -34,9 +33,6 @@ macro_rules! impl_Block {
         }
         fn render(&self, prev_bg: Option<u32>) {
             self.base.render(prev_bg);
-        }
-        fn retry(&mut self, interval: u32) -> bool {
-            self.base.retry(interval)
         }
         fn set_name(&mut self, name: String) {
             self.base.set_name(name);

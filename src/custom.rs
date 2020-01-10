@@ -24,8 +24,6 @@ pub struct Block {
     #[serde(flatten)]
     base: Base,
     command: String,
-    #[serde(default)]
-    retry: u32,
 }
 
 impl block::Block for Block {
@@ -43,11 +41,6 @@ impl block::Block for Block {
         let strval = str::from_utf8(&output.stdout)
             .expect("custom process returned bad output")
             .to_string();
-
-        if !output.status.success() {
-            self.base.set_retry(self.retry);
-            return;
-        }
 
         let data: Vec<&str> = strval.split('\n').collect();
         self.base.value = match data.len() {

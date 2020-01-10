@@ -94,9 +94,6 @@ pub struct Base {
     /// name of the block
     #[serde(skip)]
     name: String,
-    /// retry interval in case of value is invalid
-    #[serde(skip, default = "default_zero")]
-    retry: u32,
     /// with of separator
     #[serde(default = "default_zero")]
     separator_width: u32,
@@ -248,18 +245,6 @@ impl Base {
         }
     }
 
-    pub fn retry(&mut self, interval: u32) -> bool {
-        if self.retry != 0 {
-            if self.retry <= interval {
-                self.retry = 0;
-                return true;
-            } else {
-                self.retry -= interval;
-            }
-        }
-        false
-    }
-
     pub fn interval(&self) -> u32 {
         self.interval
     }
@@ -286,10 +271,6 @@ impl Base {
 
     pub fn set_name(&mut self, name: String) {
         self.name = name;
-    }
-
-    pub fn set_retry(&mut self, retry: u32) {
-        self.retry = retry;
     }
 
     pub fn set_ignore_decoration(&mut self, value: bool) {
