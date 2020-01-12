@@ -7,7 +7,7 @@ edition = "2018"
 [dependencies]
 chrono = "*"
 libc = "*"
-alsa = { git = "https://github.com/okeri/alsa-rs.git" , branch = "add_mixer_handle_events" }
+alsa = "*"
 serde = { version = "*", features = ["derive"] }
 serde_yaml = "*"
 
