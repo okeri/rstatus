@@ -46,11 +46,14 @@ impl block::Block for Block {
         self.base.value = match data.len() {
             0 => Value::Invalid,
             1 => {
-                let value = data[0].parse::<u32>();
-                if value.is_ok() {
-                    Value::new(value.unwrap())
+                if let Ok(value) = data[0].parse::<u32>() {
+                    Value::new(value)
                 } else {
-                    Value::new(data[0])
+		    if data[0].len() > 0 {
+			Value::new(data[0])
+		    } else {
+			Value::Invalid
+		    }
                 }
             }
             _ => {
