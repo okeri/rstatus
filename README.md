@@ -24,7 +24,6 @@ of your tiling wm
 * interval - update interval in seconds
 * signal - signal for update block
 * name - block name
-* retry - retry update block  in seconds
 * separator_width -  width of separator after block
 * custom_separator -  use custom symbol(s) for block separator
 * color - foreground color ('#RRGGBB')
@@ -40,6 +39,8 @@ of your tiling wm
 
 ### Extending rstatus via custom block
 See one of samples for syntax.  
-it asks from your binary/shell scripts for output  
-First line is for value, second is for color(optional)
-
+It asks from your binary/shell scripts for output. First line is for value, second is for color(optional)  
+Please also note, custom block executes command in the main thread. That means you shoud not make network  
+requests here. This could be implemented in async way, but it also means you have to detect network activity,  
+failure handlers and so on. Instead please check systemd timers, you always could send unix signal(kill/pkill) to  
+rstatus from process triggered by systemd.
