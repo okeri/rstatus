@@ -29,17 +29,19 @@ pub struct Block {
     #[serde(default = "empty_extras")]
     prefix_extras: Vec<String>,
     #[serde(default = "default_false")]
-    jack_switch_outputs: bool,
+    alsa_jack_switch_outputs: bool,
     #[serde(default = "default_false")]
-    jack_mute_on_unplug: bool,
+    alsa_jack_mute_on_unplug: bool,
     #[serde(default = "default_false")]
-    jack_unmute_on_plug: bool,
+    alsa_jack_unmute_on_plug: bool,
     #[serde(skip, default = "default_false")]
     jack_plugged: bool,
     #[serde(skip, default = "default_false")]
     master_exists: bool,
     #[serde(skip, default = "default_none")]
-    dev: Option<AlsaDevice>,
+    alsa: Option<AlsaDevice>,
+    #[serde(skip, default = "default_false")]
+    use_pulse: bool,
 }
 
 fn empty_extras() -> Vec<String> {
@@ -56,24 +58,24 @@ fn default_none() -> Option<AlsaDevice> {
 
 impl Block {
     fn jack_plug_check(&mut self) {
-        if let Some(dev) = &self.dev {
+        if let Some(dev) = &self.alsa {
             if let Some(plugged) = dev.jack_plugged() {
                 if self.jack_plugged != plugged {
                     self.jack_plugged = plugged;
                     if plugged {
-                        if self.jack_switch_outputs {
+                        if self.alsa_jack_switch_outputs {
                             dev.set_mute("Speaker", true);
                             dev.set_mute("Headphone", false);
                         }
-                        if self.jack_unmute_on_plug {
+                        if self.alsa_jack_unmute_on_plug {
                             dev.set_mute("Master", false);
                         }
                     } else {
-                        if self.jack_switch_outputs {
+                        if self.alsa_jack_switch_outputs {
                             dev.set_mute("Speaker", false);
                             dev.set_mute("Headphone", true);
                         }
-                        if self.jack_mute_on_unplug {
+                        if self.alsa_jack_mute_on_unplug {
                             dev.set_mute("Master", true);
                         }
                     }
@@ -81,31 +83,10 @@ impl Block {
             }
         }
     }
-}
 
-impl block::Block for Block {
-    impl_Block!();
-
-    fn update(&mut self) {
-        if self.dev.is_none() {
-            self.dev = AlsaDevice::new(&self.card);
-            if let Some(dev) = &self.dev {
-                if let Some(plugged) = dev.jack_plugged() {
-                    self.jack_plugged = plugged;
-                }
-                self.master_exists = dev.exists("Master");
-                let signal = self.signal();
-                if signal != 0 {
-                    dev.listen(&self.card, signal as i32);
-                }
-            }
-        } else {
-            if let Some(dev) = &self.dev {
-                dev.update();
-            }
-        }
+    fn handle_events_alsa(&mut self) {
         self.jack_plug_check();
-        if let Some(dev) = &self.dev {
+        if let Some(dev) = &self.alsa {
             self.base.value = if self.master_exists {
                 if self.prefix_extras.len() > 1 {
                     if dev.volume("Speaker").is_none() && dev.volume("Headphone").is_some() {
@@ -129,6 +110,43 @@ impl block::Block for Block {
             }
         } else {
             self.base.value = Value::Invalid
+        }
+    }
+
+    fn handle_events_pulse(&mut self) {
+        if let Some(dev) = &self.alsa {
+            self.base.value = Value::new(dev.volume("Master"));
+        } else {
+            self.base.value = Value::Invalid;
+        }
+    }
+}
+
+impl block::Block for Block {
+    impl_Block!();
+
+    fn update(&mut self) {
+        if self.alsa.is_none() {
+            self.alsa = AlsaDevice::new(&self.card);
+            if let Some(dev) = &self.alsa {
+                if let Some(plugged) = dev.jack_plugged() {
+                    self.jack_plugged = plugged;
+                }
+                self.master_exists = dev.exists("Master");
+                self.use_pulse = AlsaDevice::card_name(&self.card) == "PulseAudio";
+                if self.signal() != 0 {
+                    dev.listen(&self.card, self.signal() as i32, self.use_pulse);
+                }
+            }
+        } else {
+            if let Some(dev) = &self.alsa {
+                dev.update();
+            }
+        }
+        if self.use_pulse {
+            self.handle_events_pulse();
+        } else {
+            self.handle_events_alsa();
         }
     }
 }

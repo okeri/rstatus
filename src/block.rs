@@ -40,5 +40,5 @@ macro_rules! impl_Block {
         fn bgcolor(&self) -> Option<u32> {
             self.base.bg()
         }
-    }
+    };
 }

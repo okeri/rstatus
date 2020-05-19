@@ -49,11 +49,11 @@ impl block::Block for Block {
                 if let Ok(value) = data[0].parse::<u32>() {
                     Value::new(value)
                 } else {
-		    if data[0].len() > 0 {
-			Value::new(data[0])
-		    } else {
-			Value::Invalid
-		    }
+                    if data[0].len() > 0 {
+                        Value::new(data[0])
+                    } else {
+                        Value::Invalid
+                    }
                 }
             }
             _ => {

@@ -103,7 +103,7 @@ fn main() {
             }
             let signal = block.signal();
             if signal != 0 {
-                utility::signal(utility::SIGRTMIN + signal as i32, update);
+                utility::signal(signal as i32, update);
             }
         }
 

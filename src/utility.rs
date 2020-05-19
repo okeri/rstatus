@@ -46,7 +46,7 @@ pub fn signal(signal: i32, action: fn(i32)) {
             let mut sigaction: libc::sigaction = mem::zeroed();
             sigaction.sa_mask = sigset;
             sigaction.sa_sigaction = action as usize;
-            libc::sigaction(signal, &sigaction, ptr::null_mut());
+            libc::sigaction(signal + SIGRTMIN, &sigaction, ptr::null_mut());
         }
     }
 }
@@ -65,6 +65,6 @@ pub fn read_color(input: &str, default: u32) -> u32 {
             i64::from_str_radix(input, 16).unwrap_or(default as i64) as u32
         }
     } else {
-	default
+        default
     }
 }

@@ -16,7 +16,7 @@
 
 use super::utility::notify;
 use alsa::{
-    ctl::ElemId,
+    ctl::{Ctl, ElemId},
     hctl::HCtl,
     mixer::{Mixer, SelemChannelId, SelemId},
 };
@@ -75,6 +75,16 @@ impl AlsaDevice {
         self.mixer.find_selem(&id).is_some()
     }
 
+    pub fn card_name(card_name: &str) -> String {
+        if let Ok(card) = Ctl::new(card_name, false) {
+            if let Ok(info) = card.card_info() {
+                let result = info.get_name().unwrap_or(card_name);
+                return result.to_owned();
+            }
+        }
+        card_name.to_owned()
+    }
+
     pub fn set_mute(&self, mixer: &str, value: bool) {
         let id = SelemId::new(mixer, 0);
         if let Some(selem) = self.mixer.find_selem(&id) {
@@ -107,9 +117,12 @@ impl AlsaDevice {
             .map(|value| ((value - min) * 100 / (max - min)) as u32)
     }
 
-    pub fn listen(&self, card: &str, signal: i32) {
+    pub fn listen(&self, card: &str, signal: i32, pulse: bool) {
         if let Ok(mixer) = Mixer::new(card, false) {
             thread::spawn(move || loop {
+                if pulse {
+                    mixer.handle_events().unwrap();
+                }
                 if mixer.wait(None).is_ok() && mixer.handle_events().is_ok() {
                     notify(id() as i32, signal);
                 }
