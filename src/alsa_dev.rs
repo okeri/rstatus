@@ -14,15 +14,18 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 
-use super::utility::notify;
 use alsa::{
     ctl::{Ctl, ElemId},
     hctl::HCtl,
     mixer::{Mixer, SelemChannelId, SelemId},
 };
-use std::{process::id, thread};
+
+use super::blocks::update_by_index;
+use super::sound_service::SoundService;
+use std::thread;
 
 pub struct AlsaDevice {
+    name: String,
     mixer: Mixer,
     hctl: Option<HCtl>,
     jack: Option<ElemId>,
@@ -46,6 +49,7 @@ impl AlsaDevice {
     pub fn new(card: &str) -> Option<AlsaDevice> {
         if let Ok(mixer) = Mixer::new(card, false) {
             let mut result = AlsaDevice {
+                name: AlsaDevice::card_name(card),
                 mixer: mixer,
                 hctl: HCtl::new(card, false).ok(),
                 jack: None,
@@ -59,22 +63,6 @@ impl AlsaDevice {
         }
     }
 
-    pub fn jack_plugged(&self) -> Option<bool> {
-        if let Some(hctl) = &self.hctl {
-            if let Some(ref id) = self.jack {
-                let jack = hctl.find_elem(id)?;
-                let value = jack.read().ok()?;
-                return value.get_boolean(0);
-            }
-        }
-        None
-    }
-
-    pub fn exists(&self, mixer: &str) -> bool {
-        let id = SelemId::new(mixer, 0);
-        self.mixer.find_selem(&id).is_some()
-    }
-
     pub fn card_name(card_name: &str) -> String {
         if let Ok(card) = Ctl::new(card_name, false) {
             if let Ok(info) = card.card_info() {
@@ -84,23 +72,24 @@ impl AlsaDevice {
         }
         card_name.to_owned()
     }
+}
 
-    pub fn set_mute(&self, mixer: &str, value: bool) {
-        let id = SelemId::new(mixer, 0);
-        if let Some(selem) = self.mixer.find_selem(&id) {
-            if selem.has_playback_switch() {
-                selem
-                    .set_playback_switch_all(if value { 0 } else { 1 })
-                    .unwrap_or(());
-            }
+impl SoundService for AlsaDevice {
+    fn name(&self) -> String {
+        self.name.clone()
+    }
+
+    fn listen(&mut self, block_index: usize) {
+        if let Ok(mixer) = Mixer::new(&self.name, false) {
+            thread::spawn(move || loop {
+                if mixer.wait(None).is_ok() && mixer.handle_events().is_ok() {
+                    update_by_index(block_index);
+                }
+            });
         }
     }
 
-    pub fn update(&self) {
-        self.mixer.handle_events().unwrap_or(0);
-    }
-
-    pub fn volume(&self, mixer: &str) -> Option<u32> {
+    fn volume(&self, mixer: &str) -> Option<u32> {
         let id = SelemId::new(mixer, 0);
         let selem = self.mixer.find_selem(&id)?;
         if selem.has_playback_switch() {
@@ -117,16 +106,34 @@ impl AlsaDevice {
             .map(|value| ((value - min) * 100 / (max - min)) as u32)
     }
 
-    pub fn listen(&self, card: &str, signal: i32, pulse: bool) {
-        if let Ok(mixer) = Mixer::new(card, false) {
-            thread::spawn(move || loop {
-                if pulse {
-                    mixer.handle_events().unwrap();
-                }
-                if mixer.wait(None).is_ok() && mixer.handle_events().is_ok() {
-                    notify(id() as i32, signal);
-                }
-            });
+    fn jack_plugged(&self) -> Option<bool> {
+        if let Some(hctl) = &self.hctl {
+            if let Some(ref id) = self.jack {
+                let jack = hctl.find_elem(id)?;
+                let value = jack.read().ok()?;
+                return value.get_boolean(0);
+            }
         }
+        None
+    }
+
+    fn exists(&self, mixer: &str) -> bool {
+        let id = SelemId::new(mixer, 0);
+        self.mixer.find_selem(&id).is_some()
+    }
+
+    fn set_mute(&self, mixer: &str, value: bool) {
+        let id = SelemId::new(mixer, 0);
+        if let Some(selem) = self.mixer.find_selem(&id) {
+            if selem.has_playback_switch() {
+                selem
+                    .set_playback_switch_all(if value { 0 } else { 1 })
+                    .unwrap_or(());
+            }
+        }
+    }
+
+    fn update(&self) {
+        self.mixer.handle_events().unwrap_or(0);
     }
 }

@@ -14,7 +14,6 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 
-use libc::kill;
 use std::{fs, io, mem, ptr, str};
 
 pub const SIGRTMIN: i32 = 34;
@@ -48,12 +47,6 @@ pub fn signal(signal: i32, action: fn(i32)) {
             sigaction.sa_sigaction = action as usize;
             libc::sigaction(signal + SIGRTMIN, &sigaction, ptr::null_mut());
         }
-    }
-}
-
-pub fn notify(pid: i32, signal: i32) {
-    unsafe {
-        kill(pid, signal + SIGRTMIN);
     }
 }
 

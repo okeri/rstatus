@@ -133,6 +133,8 @@ pub struct Base {
     /// color thresholds
     #[serde(default = "default_thresholds", deserialize_with = "parse_thresholds")]
     thresholds: Thresholds,
+    #[serde(skip, default = "default_index")]
+    index: usize,
 }
 
 impl Base {
@@ -253,6 +255,10 @@ impl Base {
         self.signal
     }
 
+    pub fn set_index(&mut self, index: usize) {
+        self.index = index;
+    }
+
     pub fn bg(&self) -> Option<u32> {
         self.bgcolor
     }
@@ -275,6 +281,10 @@ impl Base {
 
     pub fn set_ignore_decoration(&mut self, value: bool) {
         self.ignore_decoration = value;
+    }
+
+    pub fn index(&self) -> usize {
+        self.index
     }
 }
 
@@ -317,6 +327,10 @@ fn default_invalid() -> String {
 }
 
 fn default_zero() -> u32 {
+    0
+}
+
+fn default_index() -> usize {
     0
 }
 

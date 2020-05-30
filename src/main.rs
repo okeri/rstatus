@@ -22,70 +22,27 @@ mod block;
 mod blocks;
 mod alsa_dev;
 mod block_builder;
+mod pulse_dev;
+mod sound_service;
 mod utility;
 
 all_blocks! {mod_blocks}
 
-use std::sync::{Arc, Mutex, Once};
-
-type BlocksWrapper = Arc<Mutex<blocks::BlocksCollection>>;
-
-fn blocks() -> BlocksWrapper {
-    static mut SINGLETON: *const BlocksWrapper = 0 as *const BlocksWrapper;
-    static ONCE: Once = Once::new();
-
-    unsafe {
-        ONCE.call_once(|| {
-            let singleton = Arc::new(Mutex::new(init_blocks()));
-            SINGLETON = std::mem::transmute(Box::new(singleton));
-        });
-        (*SINGLETON).clone()
-    }
-}
-
-fn update(sig: i32) {
+fn update_by_signal(sig: i32) {
     let mut refresh = false;
-    let blocks = blocks();
-    for block in blocks.lock().unwrap().iter_mut() {
+    for block in blocks::blocks().lock().unwrap().iter_mut() {
         if sig == block.signal() as i32 + utility::SIGRTMIN {
             block.update();
             refresh = true;
         }
     }
     if refresh {
-        display_all();
+        blocks::display_all();
     }
-}
-
-fn display_all() {
-    print!("[");
-    let mut first = true;
-    let blocks = blocks();
-    let mut prev_bg: Option<u32> = None;
-    for block in blocks.lock().unwrap().iter() {
-        if !first {
-            print!(",");
-        } else {
-            first = false
-        }
-        block.render(prev_bg);
-        prev_bg = block.bgcolor();
-    }
-    println!("],");
-}
-
-fn init_blocks() -> blocks::BlocksCollection {
-    let home = std::env::var_os("HOME").expect("error getting home var");
-    let cfg_path = std::path::Path::new(&home)
-        .join(".config")
-        .join("rstatus")
-        .join("config.yaml");
-
-    blocks::init_from_config(&cfg_path)
 }
 
 fn main() {
-    let blocks = blocks();
+    let blocks = blocks::blocks();
     let mut gcd: u32 = 0;
     for block in blocks.lock().unwrap().iter() {
         gcd = block.interval();
@@ -103,7 +60,7 @@ fn main() {
             }
             let signal = block.signal();
             if signal != 0 {
-                utility::signal(signal as i32, update);
+                utility::signal(signal as i32, update_by_signal);
             }
         }
 
@@ -117,7 +74,7 @@ fn main() {
                     block.update();
                 }
             }
-            display_all();
+            blocks::display_all();
             count += gcd as u64
         }
     }

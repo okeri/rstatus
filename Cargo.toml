@@ -10,4 +10,4 @@ libc = "*"
 alsa = "*"
 serde = { version = "*", features = ["derive"] }
 serde_yaml = "*"
-
+libpulse-binding = "*"

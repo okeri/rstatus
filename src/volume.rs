@@ -17,12 +17,15 @@
 use super::alsa_dev::AlsaDevice;
 use super::base::{default_false, Base, Value};
 use super::block;
+use super::pulse_dev::PulseDevice;
+use super::sound_service::SoundService;
 use serde::Deserialize;
 
 #[derive(Deserialize)]
 pub struct Block {
     #[serde(flatten)]
     base: Base,
+    #[serde(default = "default_mixer")]
     mixer: String,
     #[serde(default = "default_card")]
     card: String,
@@ -38,10 +41,8 @@ pub struct Block {
     jack_plugged: bool,
     #[serde(skip, default = "default_false")]
     master_exists: bool,
-    #[serde(skip, default = "default_none")]
-    alsa: Option<AlsaDevice>,
-    #[serde(skip, default = "default_false")]
-    use_pulse: bool,
+    #[serde(skip, default = "default_service")]
+    service: Option<Box<dyn SoundService>>,
 }
 
 fn empty_extras() -> Vec<String> {
@@ -52,53 +53,54 @@ fn default_card() -> String {
     "default".to_owned()
 }
 
-fn default_none() -> Option<AlsaDevice> {
+fn default_mixer() -> String {
+    "PCM".to_owned()
+}
+
+fn default_service() -> Option<Box<dyn SoundService>> {
     None
 }
 
 impl Block {
-    fn jack_plug_check(&mut self) {
-        if let Some(dev) = &self.alsa {
-            if let Some(plugged) = dev.jack_plugged() {
-                if self.jack_plugged != plugged {
-                    self.jack_plugged = plugged;
-                    if plugged {
-                        if self.alsa_jack_switch_outputs {
-                            dev.set_mute("Speaker", true);
-                            dev.set_mute("Headphone", false);
-                        }
-                        if self.alsa_jack_unmute_on_plug {
-                            dev.set_mute("Master", false);
-                        }
-                    } else {
-                        if self.alsa_jack_switch_outputs {
-                            dev.set_mute("Speaker", false);
-                            dev.set_mute("Headphone", true);
-                        }
-                        if self.alsa_jack_mute_on_unplug {
-                            dev.set_mute("Master", true);
+    fn handle_events(&mut self) {
+        if let Some(ref service) = self.service {
+            service.update();
+            if service.name() != "PulseAudio" {
+                if let Some(plugged) = service.jack_plugged() {
+                    if self.jack_plugged != plugged {
+                        self.jack_plugged = plugged;
+                        if plugged {
+                            if self.alsa_jack_switch_outputs {
+                                service.set_mute("Speaker", true);
+                                service.set_mute("Headphone", false);
+                            }
+                            if self.alsa_jack_unmute_on_plug {
+                                service.set_mute("Master", false);
+                            }
+                        } else {
+                            if self.alsa_jack_switch_outputs {
+                                service.set_mute("Speaker", false);
+                                service.set_mute("Headphone", true);
+                            }
+                            if self.alsa_jack_mute_on_unplug {
+                                service.set_mute("Master", true);
+                            }
                         }
                     }
                 }
             }
-        }
-    }
-
-    fn handle_events_alsa(&mut self) {
-        self.jack_plug_check();
-        if let Some(dev) = &self.alsa {
             self.base.value = if self.master_exists {
                 if self.prefix_extras.len() > 1 {
-                    if dev.volume("Speaker").is_none() && dev.volume("Headphone").is_some() {
+                    if self.jack_plugged {
                         self.base.set_prefix(&self.prefix_extras[0]);
                     } else {
                         self.base.set_prefix(&self.prefix_extras[1]);
                     }
                 }
 
-                if let Some(volume) = dev.volume("Master") {
+                if let Some(volume) = service.volume("Master") {
                     if self.mixer != "Master" {
-                        Value::new(dev.volume(&self.mixer))
+                        Value::new(service.volume(&self.mixer))
                     } else {
                         Value::new(volume)
                     }
@@ -106,18 +108,8 @@ impl Block {
                     Value::Invalid
                 }
             } else {
-                Value::new(dev.volume(&self.mixer))
+                Value::new(service.volume(&self.mixer))
             }
-        } else {
-            self.base.value = Value::Invalid
-        }
-    }
-
-    fn handle_events_pulse(&mut self) {
-        if let Some(dev) = &self.alsa {
-            self.base.value = Value::new(dev.volume("Master"));
-        } else {
-            self.base.value = Value::Invalid;
         }
     }
 }
@@ -126,27 +118,24 @@ impl block::Block for Block {
     impl_Block!();
 
     fn update(&mut self) {
-        if self.alsa.is_none() {
-            self.alsa = AlsaDevice::new(&self.card);
-            if let Some(dev) = &self.alsa {
-                if let Some(plugged) = dev.jack_plugged() {
+        if self.service.is_none() {
+            if AlsaDevice::card_name(&self.card) == "PulseAudio" {
+                if let Some(pulse) = PulseDevice::new() {
+                    self.service = Some(Box::from(pulse));
+                }
+            } else {
+                if let Some(alsa) = AlsaDevice::new(&self.card) {
+                    self.service = Some(Box::from(alsa));
+                }
+            }
+            if let Some(ref mut service) = self.service {
+                if let Some(plugged) = service.jack_plugged() {
                     self.jack_plugged = plugged;
                 }
-                self.master_exists = dev.exists("Master");
-                self.use_pulse = AlsaDevice::card_name(&self.card) == "PulseAudio";
-                if self.signal() != 0 {
-                    dev.listen(&self.card, self.signal() as i32, self.use_pulse);
-                }
-            }
-        } else {
-            if let Some(dev) = &self.alsa {
-                dev.update();
+                self.master_exists = service.exists("Master");
+                service.listen(self.base.index());
             }
         }
-        if self.use_pulse {
-            self.handle_events_pulse();
-        } else {
-            self.handle_events_alsa();
-        }
+        self.handle_events();
     }
 }

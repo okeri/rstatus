@@ -21,6 +21,7 @@ pub trait Block {
     fn signal(&self) -> u32;
     fn bgcolor(&self) -> Option<u32>;
     fn render(&self, prev_bg: Option<u32>);
+    fn set_index(&mut self, index: usize);
 }
 
 macro_rules! impl_Block {
@@ -39,6 +40,9 @@ macro_rules! impl_Block {
         }
         fn bgcolor(&self) -> Option<u32> {
             self.base.bg()
+        }
+        fn set_index(&mut self, index: usize) {
+            self.base.set_index(index);
         }
     };
 }
