@@ -43,7 +43,6 @@
       mixer: 'Master'
       separator_width: 12
       prefix_color: '#a66a00'
-      signal: 10
       prefix: ' '
       suffix: '%'
       invalid: "♪ muted"

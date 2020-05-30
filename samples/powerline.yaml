@@ -44,7 +44,6 @@
       mixer: 'Master'
       custom_separator: '\ue0b2'
       bgcolor: '#202040'
-      signal: 10
       prefix: '  '
       suffix: '% '
       invalid: " ♪ muted "

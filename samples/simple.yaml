@@ -38,7 +38,6 @@
   - volume:
       mixer: 'Master'
       separator_width: 20
-      signal: 10
       prefix: " "
       invalid: "♪ muted"
       invalid_color: "#FFF600"
