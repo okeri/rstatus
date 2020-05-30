@@ -60,7 +60,6 @@ impl PulseCache {
             }
         }
 
-        self.jack_plugged = None;
         if jack_present {
             if let Some(ref port) = info.active_port {
                 self.jack_plugged = match port.available {
@@ -68,6 +67,8 @@ impl PulseCache {
                     _ => Some(false),
                 };
             }
+        } else {
+            self.jack_plugged = None;
         }
     }
 }
@@ -123,19 +124,21 @@ impl PulseDevice {
     ) {
         let context_ref = Rc::clone(&context);
         let cache_ref = Rc::clone(&cache);
-        context.borrow().introspect().get_server_info( move |si| {
-        if let Some(ref def) = si.default_sink_name {
-        	cache_ref.borrow_mut().sink = def.to_owned().to_string();
-        	let cache_ref2 = Rc::clone(&cache_ref);
-        	context_ref.borrow().introspect()
-        	    .get_sink_info_by_name(&def.to_owned().to_string(),
-        				   move |def| {
-        				       if let callbacks::ListResult::Item(sink) = def {
-        					   cache_ref2.borrow_mut().update(sink);
-						   update_by_index(block_index);
-        				       }
-        				   });
-        }});
+        context.borrow().introspect().get_server_info(move |si| {
+            if let Some(ref def) = si.default_sink_name {
+                cache_ref.borrow_mut().sink = def.to_owned().to_string();
+                let cache_ref2 = Rc::clone(&cache_ref);
+                context_ref.borrow().introspect().get_sink_info_by_name(
+                    &def.to_owned().to_string(),
+                    move |def| {
+                        if let callbacks::ListResult::Item(sink) = def {
+                            cache_ref2.borrow_mut().update(sink);
+                            update_by_index(block_index);
+                        }
+                    },
+                );
+            }
+        });
     }
 }
 
@@ -165,14 +168,10 @@ impl SoundService for PulseDevice {
         }
         self.dispatcher.borrow_mut().unlock();
         self.context.borrow_mut().set_state_callback(None);
-	let context = Rc::clone(&self.context);
+        let context = Rc::clone(&self.context);
         let cache = Rc::clone(&self.cache);
 
-        PulseDevice::update_cache(
-            &context,
-            &cache,
-            block_index,
-        );
+        PulseDevice::update_cache(&context, &cache, block_index);
         self.context
             .borrow_mut()
             .set_subscribe_callback(Some(Box::new(move |_, _, _| {

@@ -65,30 +65,36 @@ impl Block {
     fn handle_events(&mut self) {
         if let Some(ref service) = self.service {
             service.update();
+            let jack_plugged = if let Some(plugged) = service.jack_plugged() {
+                plugged
+            } else {
+                false
+            };
+
             if service.name() != "PulseAudio" {
-                if let Some(plugged) = service.jack_plugged() {
-                    if self.jack_plugged != plugged {
-                        self.jack_plugged = plugged;
-                        if plugged {
-                            if self.alsa_jack_switch_outputs {
-                                service.set_mute("Speaker", true);
-                                service.set_mute("Headphone", false);
-                            }
-                            if self.alsa_jack_unmute_on_plug {
-                                service.set_mute("Master", false);
-                            }
-                        } else {
-                            if self.alsa_jack_switch_outputs {
-                                service.set_mute("Speaker", false);
-                                service.set_mute("Headphone", true);
-                            }
-                            if self.alsa_jack_mute_on_unplug {
-                                service.set_mute("Master", true);
-                            }
+                if self.jack_plugged != jack_plugged {
+                    if jack_plugged {
+                        if self.alsa_jack_switch_outputs {
+                            service.set_mute("Speaker", true);
+                            service.set_mute("Headphone", false);
+                        }
+                        if self.alsa_jack_unmute_on_plug {
+                            service.set_mute("Master", false);
+                        }
+                    } else {
+                        if self.alsa_jack_switch_outputs {
+                            service.set_mute("Speaker", false);
+                            service.set_mute("Headphone", true);
+                        }
+                        if self.alsa_jack_mute_on_unplug {
+                            service.set_mute("Master", true);
                         }
                     }
                 }
             }
+
+            self.jack_plugged = jack_plugged;
+
             self.base.value = if self.master_exists {
                 if self.prefix_extras.len() > 1 {
                     if self.jack_plugged {
