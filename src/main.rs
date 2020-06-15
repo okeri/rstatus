@@ -52,6 +52,7 @@ fn main() {
     }
 
     if gcd != 0 {
+        let mut signals = vec![];
         for block in blocks.lock().unwrap().iter_mut() {
             block.update();
             let interval = block.interval();
@@ -61,10 +62,20 @@ fn main() {
             let signal = block.signal();
             if signal != 0 {
                 utility::signal(signal as i32, update_by_signal);
+                signals.push(signal as i32);
             }
         }
 
         println!("{{\"version\": 1, \"click_events\": false}}\n[");
+        if !signals.is_empty() {
+            std::thread::spawn(|| {
+                let day = std::time::Duration::from_secs(86400);
+                loop {
+                    std::thread::sleep(day);
+                }
+            });
+        }
+        utility::mask(signals);
         let mut count = 1u64;
         loop {
             std::thread::sleep(std::time::Duration::from_secs(gcd as u64));

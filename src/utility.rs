@@ -38,6 +38,18 @@ pub fn gcd(i1: u32, i2: u32) -> u32 {
     y
 }
 
+pub fn mask(signals: Vec<i32>) {
+    unsafe {
+        let mut sigset = mem::MaybeUninit::uninit().assume_init();
+        if libc::sigemptyset(&mut sigset) != -1 {
+            for signal in signals.iter() {
+                libc::sigaddset(&mut sigset, SIGRTMIN + signal);
+            }
+            libc::pthread_sigmask(libc::SIG_BLOCK, &mut sigset, ptr::null_mut());
+        }
+    }
+}
+
 pub fn signal(signal: i32, action: fn(i32)) {
     unsafe {
         let mut sigset = mem::MaybeUninit::uninit().assume_init();
