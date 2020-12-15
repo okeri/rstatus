@@ -326,7 +326,7 @@ fn default_invalid() -> String {
     "invalid".to_string()
 }
 
-fn default_zero() -> u32 {
+pub fn default_zero() -> u32 {
     0
 }
 

@@ -14,9 +14,9 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 
-use super::base::{Base, Value};
+use super::base::{Base, Value, default_zero};
 use super::block;
-use serde::Deserialize;
+use serde::{Deserialize, Deserializer, de::Error};
 use std::collections::BTreeMap;
 
 #[derive(Deserialize)]
@@ -27,6 +27,13 @@ pub struct Status {
     pub suffix: String,
 }
 
+pub enum WarningAction {
+    DoNothing,
+    Shutdown,
+    Suspend,
+    Hibernate
+}
+
 #[derive(Deserialize)]
 pub struct Block {
     #[serde(flatten)]
@@ -34,10 +41,15 @@ pub struct Block {
     sensor: String,
     #[serde(default = "default_statuses")]
     statuses: BTreeMap<String, Status>,
+    #[serde(default = "default_zero")]
+    warning_level: u32,
+    #[serde(default = "default_action", deserialize_with = "parse_action")]
+    warning_action: WarningAction,
 }
 
 impl block::Block for Block {
     impl_Block!();
+
     fn update(&mut self) {
         let status_raw = std::fs::read_to_string(&(self.sensor.clone() + "/status"))
             .unwrap_or("error".to_string());
@@ -57,6 +69,41 @@ impl block::Block for Block {
         let value = std::fs::read_to_string(&(self.sensor.clone() + "/capacity"))
             .map_err(|_| ())
             .and_then(|text| text.trim().parse::<u32>().map_err(|_| ()));
+
+	let action_available = || {
+	    match self.warning_action {
+		WarningAction::DoNothing =>
+		    false,
+		_ => true,
+	    }
+	};
+
+	let do_action = |action: &str| {
+            std::process::Command::new("sh")
+		.arg("-c systemctl")
+		.arg(action)
+		.status()
+		.expect("failed to execute systemctl");
+	};
+	
+	if action_available() && status == "Discharging" {
+	    if let Ok(v) = value {
+		if v < self.warning_level {
+		    match self.warning_action {
+			WarningAction::Shutdown => {
+			    do_action("halt");
+			},
+			WarningAction::Suspend => {
+			    do_action("suspend");
+			},
+			WarningAction::Hibernate => {
+			    do_action("hibernate");
+			},
+			_ => {},
+		    }
+		}
+	    }
+	}
         self.base.value = Value::new(value);
     }
 }
@@ -71,4 +118,29 @@ fn status2rstatus(status: &str) -> &str {
         "Discharging" => "offline",
         _ => "full",
     }
+}
+
+
+pub fn default_action() -> WarningAction {
+    WarningAction::DoNothing
+}
+
+
+fn parse_action<'de, D>(deserializer: D) -> Result<WarningAction, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let mut result: Result<WarningAction, D::Error> = Ok(WarningAction::DoNothing);
+    let s: Option<String> = Option::deserialize(deserializer)?;
+    if let Some(text) = s {
+	let s_action = text.to_lowercase();
+	result = match s_action.as_str() {
+	    "donothing" => Ok(WarningAction::DoNothing),
+	    "shutdown" => Ok(WarningAction::Shutdown),
+	    "suspend" => Ok(WarningAction::Suspend),
+	    "hibernate" => Ok(WarningAction::Hibernate),
+	    _ => Err(D::Error::custom("unknown warning_action value")),
+	};
+    }
+    result
 }
