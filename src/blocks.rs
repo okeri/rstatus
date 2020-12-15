@@ -53,7 +53,7 @@ macro_rules! mod_blocks {
 
 macro_rules! define_blocks {
      (
-         $($name: ident,)+
+         $($name: tt,)+
      ) => {
          #[allow(non_camel_case_types)]
          #[derive(Deserialize)]
