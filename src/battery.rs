@@ -16,7 +16,7 @@
 
 use super::base::{Base, Value, default_zero};
 use super::block;
-use serde::{Deserialize, Deserializer, de::Error};
+use serde::Deserialize;
 use std::collections::BTreeMap;
 
 #[derive(Deserialize)]
@@ -25,13 +25,6 @@ pub struct Status {
     pub prefix: String,
     #[serde(default)]
     pub suffix: String,
-}
-
-pub enum WarningAction {
-    DoNothing,
-    Shutdown,
-    Suspend,
-    Hibernate
 }
 
 #[derive(Deserialize)]
@@ -43,8 +36,7 @@ pub struct Block {
     statuses: BTreeMap<String, Status>,
     #[serde(default = "default_zero")]
     warning_level: u32,
-    #[serde(default = "default_action", deserialize_with = "parse_action")]
-    warning_action: WarningAction,
+    warning_action: Option<String>,
 }
 
 impl block::Block for Block {
@@ -70,36 +62,15 @@ impl block::Block for Block {
             .map_err(|_| ())
             .and_then(|text| text.trim().parse::<u32>().map_err(|_| ()));
 
-	let action_available = || {
-	    match self.warning_action {
-		WarningAction::DoNothing =>
-		    false,
-		_ => true,
-	    }
-	};
-
-	let do_action = |action: &str| {
-            std::process::Command::new("sh")
-		.arg("-c systemctl")
-		.arg(action)
-		.status()
-		.expect("failed to execute systemctl");
-	};
-	
-	if action_available() && status == "Discharging" {
-	    if let Ok(v) = value {
-		if v < self.warning_level {
-		    match self.warning_action {
-			WarningAction::Shutdown => {
-			    do_action("halt");
-			},
-			WarningAction::Suspend => {
-			    do_action("suspend");
-			},
-			WarningAction::Hibernate => {
-			    do_action("hibernate");
-			},
-			_ => {},
+	if let Some(ref action) = self.warning_action {
+	    if status == "Discharging" {
+		if let Ok(v) = value {
+		    if v < self.warning_level {
+			std::process::Command::new("sh")
+			    .arg("-c")
+			    .arg(action)
+			    .status()
+			    .expect(&format!("failed to execute {}", action));
 		    }
 		}
 	    }
@@ -118,29 +89,4 @@ fn status2rstatus(status: &str) -> &str {
         "Discharging" => "offline",
         _ => "full",
     }
-}
-
-
-pub fn default_action() -> WarningAction {
-    WarningAction::DoNothing
-}
-
-
-fn parse_action<'de, D>(deserializer: D) -> Result<WarningAction, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    let mut result: Result<WarningAction, D::Error> = Ok(WarningAction::DoNothing);
-    let s: Option<String> = Option::deserialize(deserializer)?;
-    if let Some(text) = s {
-	let s_action = text.to_lowercase();
-	result = match s_action.as_str() {
-	    "donothing" => Ok(WarningAction::DoNothing),
-	    "shutdown" => Ok(WarningAction::Shutdown),
-	    "suspend" => Ok(WarningAction::Suspend),
-	    "hibernate" => Ok(WarningAction::Hibernate),
-	    _ => Err(D::Error::custom("unknown warning_action value")),
-	};
-    }
-    result
 }
