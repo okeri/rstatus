@@ -14,12 +14,11 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 
-//use super::utility::notify;
 use super::blocks::update_by_index;
 use super::sound_service::SoundService;
 use libpulse_binding::{
     callbacks,
-    context::{self, flags, introspect, subscribe::subscription_masks, Context},
+    context::{self, introspect, subscribe::InterestMaskSet, Context, FlagSet},
     def::PortAvailable,
     mainloop::threaded::Mainloop,
     volume::VOLUME_NORM,
@@ -103,7 +102,7 @@ impl PulseDevice {
                     })));
                 if context
                     .borrow_mut()
-                    .connect(None, flags::NOAUTOSPAWN, None)
+                    .connect(None, FlagSet::NOAUTOSPAWN, None)
                     .is_ok()
                 {
                     return Some(PulseDevice {
@@ -177,10 +176,9 @@ impl SoundService for PulseDevice {
             .set_subscribe_callback(Some(Box::new(move |_, _, _| {
                 PulseDevice::update_cache(&context, &cache, block_index);
             })));
-        self.context.borrow_mut().subscribe(
-            subscription_masks::SERVER | subscription_masks::SINK,
-            |_| {},
-        );
+        self.context
+            .borrow_mut()
+            .subscribe(InterestMaskSet::SERVER | InterestMaskSet::SINK, |_| {});
     }
 
     fn volume(&self, _mixer: &str) -> Option<u32> {
