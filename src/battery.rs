@@ -14,7 +14,7 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 
-use super::base::{Base, Value, default_zero};
+use super::base::{Base, Value, default_zero, default_str_none};
 use super::block;
 use serde::Deserialize;
 use std::collections::BTreeMap;
@@ -36,6 +36,7 @@ pub struct Block {
     statuses: BTreeMap<String, Status>,
     #[serde(default = "default_zero")]
     warning_level: u32,
+    #[serde(default = "default_str_none")]
     warning_action: Option<String>,
 }
 

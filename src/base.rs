@@ -346,7 +346,7 @@ fn default_none() -> Option<u32> {
     None
 }
 
-fn default_str_none() -> Option<String> {
+pub fn default_str_none() -> Option<String> {
     None
 }
 
