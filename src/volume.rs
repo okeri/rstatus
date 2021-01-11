@@ -122,13 +122,11 @@ impl Block {
 
 impl block::Block for Block {
     impl_Block!();
-
     fn update(&mut self) {
         if self.service.is_none() {
-            if AlsaDevice::card_name(&self.card) == "PulseAudio" {
-                if let Some(pulse) = PulseDevice::new() {
-                    self.service = Some(Box::from(pulse));
-                }
+	    self.service = None;
+	    if let Some(pulse) = PulseDevice::new() {
+                self.service = Some(Box::from(pulse));
             } else {
                 if let Some(alsa) = AlsaDevice::new(&self.card) {
                     self.service = Some(Box::from(alsa));

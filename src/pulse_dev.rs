@@ -21,7 +21,7 @@ use libpulse_binding::{
     context::{self, introspect, subscribe::InterestMaskSet, Context, FlagSet},
     def::PortAvailable,
     mainloop::threaded::Mainloop,
-    volume::VOLUME_NORM,
+    volume::Volume,
 };
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -43,7 +43,7 @@ impl PulseCache {
 
     fn update(&mut self, info: &introspect::SinkInfo) {
         if !info.mute {
-            self.volume = Some(info.volume.avg().0 * 100 / VOLUME_NORM.0);
+            self.volume = Some(info.volume.avg().0 * 100 / Volume::NORMAL.0);
         } else {
             self.volume = None;
         }
@@ -155,7 +155,6 @@ impl SoundService for PulseDevice {
                     break;
                 }
                 context::State::Failed | context::State::Terminated => {
-                    eprintln!("Context state failed/terminated, quitting...");
                     self.dispatcher.borrow_mut().unlock();
                     self.dispatcher.borrow_mut().stop();
                     return;

@@ -15,7 +15,7 @@
 */
 
 use alsa::{
-    ctl::{Ctl, ElemId},
+    ctl::ElemId,
     hctl::HCtl,
     mixer::{Mixer, SelemChannelId, SelemId},
 };
@@ -49,7 +49,7 @@ impl AlsaDevice {
     pub fn new(card: &str) -> Option<AlsaDevice> {
         if let Ok(mixer) = Mixer::new(card, false) {
             let mut result = AlsaDevice {
-                name: AlsaDevice::card_name(card),
+                name: card.to_owned(),
                 mixer: mixer,
                 hctl: HCtl::new(card, false).ok(),
                 jack: None,
@@ -61,16 +61,6 @@ impl AlsaDevice {
         } else {
             None
         }
-    }
-
-    pub fn card_name(card_name: &str) -> String {
-        if let Ok(card) = Ctl::new(card_name, false) {
-            if let Ok(info) = card.card_info() {
-                let result = info.get_name().unwrap_or(card_name);
-                return result.to_owned();
-            }
-        }
-        card_name.to_owned()
     }
 }
 
