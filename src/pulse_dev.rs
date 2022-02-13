@@ -47,7 +47,7 @@ impl PulseCache {
         } else {
             self.volume = None;
         }
-
+//	println!("{}", info.name.borrow().unwrap());
         let mut jack_present = false;
         for port in info.ports.iter() {
             match port.available {
@@ -123,11 +123,11 @@ impl PulseDevice {
     ) {
         let context_ref = Rc::clone(&context);
         let cache_ref = Rc::clone(&cache);
-        context.borrow().introspect().get_server_info(move |si| {
+	context.borrow_mut().introspect().get_server_info(move |si| {
             if let Some(ref def) = si.default_sink_name {
                 cache_ref.borrow_mut().sink = def.to_owned().to_string();
                 let cache_ref2 = Rc::clone(&cache_ref);
-                context_ref.borrow().introspect().get_sink_info_by_name(
+                context_ref.borrow_mut().introspect().get_sink_info_by_name(
                     &def.to_owned().to_string(),
                     move |def| {
                         if let callbacks::ListResult::Item(sink) = def {
@@ -150,7 +150,7 @@ impl SoundService for PulseDevice {
         self.dispatcher.borrow_mut().lock();
         self.dispatcher.borrow_mut().start().unwrap();
         loop {
-            match self.context.borrow().get_state() {
+            match self.context.borrow_mut().get_state() {
                 context::State::Ready => {
                     break;
                 }
@@ -181,11 +181,11 @@ impl SoundService for PulseDevice {
     }
 
     fn volume(&self, _mixer: &str) -> Option<u32> {
-        self.cache.borrow().volume
+        self.cache.borrow_mut().volume
     }
 
     fn jack_plugged(&self) -> Option<bool> {
-        self.cache.borrow().jack_plugged
+        self.cache.borrow_mut().jack_plugged
     }
 
     fn exists(&self, mixer: &str) -> bool {
