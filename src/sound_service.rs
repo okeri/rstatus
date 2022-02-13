@@ -15,7 +15,8 @@
 */
 
 pub trait SoundService {
-    fn name(&self) -> String;
+    fn id(&self) -> String;
+    fn sink_name(&self) -> String;
     fn exists(&self, mixer: &str) -> bool;
     fn jack_plugged(&self) -> Option<bool>;
     fn update(&self);

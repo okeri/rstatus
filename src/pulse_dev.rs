@@ -25,9 +25,9 @@ use libpulse_binding::{
 };
 use std::cell::RefCell;
 use std::rc::Rc;
-
+use std::str::from_utf8;
 struct PulseCache {
-    pub sink: String,
+    pub sink_name: String,
     pub volume: Option<u32>,
     pub jack_plugged: Option<bool>,
 }
@@ -35,19 +35,25 @@ struct PulseCache {
 impl PulseCache {
     pub fn new() -> PulseCache {
         PulseCache {
-            sink: "".to_owned(),
+            sink_name: "".to_owned(),
             volume: None,
             jack_plugged: None,
         }
     }
 
     fn update(&mut self, info: &introspect::SinkInfo) {
+        if let Some(bytes) = info.proplist.get("alsa.card_name") {
+            self.sink_name = from_utf8(bytes)
+                .unwrap_or("")
+                .trim_end_matches(char::from(0))
+                .to_owned();
+        }
         if !info.mute {
             self.volume = Some(info.volume.avg().0 * 100 / Volume::NORMAL.0);
         } else {
             self.volume = None;
         }
-//	println!("{}", info.name.borrow().unwrap());
+
         let mut jack_present = false;
         for port in info.ports.iter() {
             match port.available {
@@ -123,27 +129,33 @@ impl PulseDevice {
     ) {
         let context_ref = Rc::clone(&context);
         let cache_ref = Rc::clone(&cache);
-	context.borrow_mut().introspect().get_server_info(move |si| {
-            if let Some(ref def) = si.default_sink_name {
-                cache_ref.borrow_mut().sink = def.to_owned().to_string();
-                let cache_ref2 = Rc::clone(&cache_ref);
-                context_ref.borrow_mut().introspect().get_sink_info_by_name(
-                    &def.to_owned().to_string(),
-                    move |def| {
-                        if let callbacks::ListResult::Item(sink) = def {
-                            cache_ref2.borrow_mut().update(sink);
-                            update_by_index(block_index);
-                        }
-                    },
-                );
-            }
-        });
+        context
+            .borrow_mut()
+            .introspect()
+            .get_server_info(move |si| {
+                if let Some(ref def) = si.default_sink_name {
+                    let cache_ref2 = Rc::clone(&cache_ref);
+                    context_ref.borrow_mut().introspect().get_sink_info_by_name(
+                        &def.to_owned().to_string(),
+                        move |def| {
+                            if let callbacks::ListResult::Item(sink) = def {
+                                cache_ref2.borrow_mut().update(sink);
+                                update_by_index(block_index);
+                            }
+                        },
+                    );
+                }
+            });
     }
 }
 
 impl SoundService for PulseDevice {
-    fn name(&self) -> String {
+    fn id(&self) -> String {
         "PulseAudio".to_owned()
+    }
+
+    fn sink_name(&self) -> String {
+        self.cache.borrow_mut().sink_name.clone()
     }
 
     fn listen(&mut self, block_index: usize) {

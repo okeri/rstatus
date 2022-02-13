@@ -29,8 +29,10 @@ pub struct Block {
     mixer: String,
     #[serde(default = "default_card")]
     card: String,
-    #[serde(default = "empty_extras")]
-    prefix_extras: Vec<String>,
+    #[serde(default = "empty_jack_icons")]
+    jack_icons: Vec<String>,
+    #[serde(default = "empty_jack_only")]
+    jack_only: Vec<String>,
     #[serde(default = "default_false")]
     alsa_jack_switch_outputs: bool,
     #[serde(default = "default_false")]
@@ -45,7 +47,11 @@ pub struct Block {
     service: Option<Box<dyn SoundService>>,
 }
 
-fn empty_extras() -> Vec<String> {
+fn empty_jack_icons() -> Vec<String> {
+    Vec::new()
+}
+
+fn empty_jack_only() -> Vec<String> {
     Vec::new()
 }
 
@@ -71,7 +77,7 @@ impl Block {
                 false
             };
 
-            if service.name() != "PulseAudio" {
+            if service.id() != "PulseAudio" {
                 if self.jack_plugged != jack_plugged {
                     if jack_plugged {
                         if self.alsa_jack_switch_outputs {
@@ -96,11 +102,12 @@ impl Block {
             self.jack_plugged = jack_plugged;
 
             self.base.value = if self.master_exists {
-                if self.prefix_extras.len() > 1 {
-                    if self.jack_plugged {
-                        self.base.set_prefix(&self.prefix_extras[0]);
+                if self.jack_icons.len() > 1 {
+                    if self.jack_plugged ||
+			self.jack_only.contains(&service.sink_name()) {
+                        self.base.set_prefix(&self.jack_icons[0]);
                     } else {
-                        self.base.set_prefix(&self.prefix_extras[1]);
+                        self.base.set_prefix(&self.jack_icons[1]);
                     }
                 }
 
@@ -124,7 +131,6 @@ impl block::Block for Block {
     impl_Block!();
     fn update(&mut self) {
         if self.service.is_none() {
-	    self.service = None;
 	    if let Some(pulse) = PulseDevice::new() {
                 self.service = Some(Box::from(pulse));
             } else {

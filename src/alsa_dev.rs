@@ -50,7 +50,7 @@ impl AlsaDevice {
         if let Ok(mixer) = Mixer::new(card, false) {
             let mut result = AlsaDevice {
                 name: card.to_owned(),
-                mixer: mixer,
+                mixer,
                 hctl: HCtl::new(card, false).ok(),
                 jack: None,
             };
@@ -65,7 +65,11 @@ impl AlsaDevice {
 }
 
 impl SoundService for AlsaDevice {
-    fn name(&self) -> String {
+    fn id(&self) -> String {
+        return "alsa".to_owned();
+    }
+
+    fn sink_name(&self) -> String {
         self.name.clone()
     }
 
