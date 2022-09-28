@@ -109,12 +109,16 @@ pub struct Base {
     /// prefix for value
     #[serde(default)]
     prefix: String,
+    #[serde(skip, default)]
+    iprefix: String,
     /// prefix color for value
     #[serde(default = "default_none", deserialize_with = "parse_color_maybe")]
     prefix_color: Option<u32>,
     /// suffix for value
     #[serde(default)]
     suffix: String,
+    #[serde(skip, default)]
+    isuffix: String,
     /// suffix color
     #[serde(default = "default_none", deserialize_with = "parse_color_maybe")]
     suffix_color: Option<u32>,
@@ -127,9 +131,6 @@ pub struct Base {
     /// fix prefix and suffix color depend on threshold
     #[serde(default = "default_false")]
     threshold_fix: bool,
-    /// ignore prefix and suffix
-    #[serde(skip, default = "default_false")]
-    ignore_decoration: bool,
     /// color thresholds
     #[serde(default = "default_thresholds", deserialize_with = "parse_thresholds")]
     thresholds: Thresholds,
@@ -194,39 +195,38 @@ impl Base {
                     prefix_color = color;
                     suffix_color = color;
                 }
-                if self.ignore_decoration {
-                    BlockBuilder::new()
-                        .add(&value.to_string(), color, suffix_flags(RenderFlags::Name))
-                        .get()
-                } else {
-                    BlockBuilder::new()
-                        .add(&self.prefix, prefix_color, RenderFlags::None)
-                        .add(&value.to_string(), color, RenderFlags::Name)
-                        .add(&self.suffix, suffix_color, suffix_flags(RenderFlags::None))
-                        .get()
-                }
+                BlockBuilder::new()
+                    .add(&self.prefix, prefix_color, RenderFlags::None)
+                    .add(&self.iprefix, prefix_color, RenderFlags::None)
+                    .add(&value.to_string(), color, RenderFlags::Name)
+                    .add(&self.isuffix, suffix_color, suffix_flags(RenderFlags::None))
+                    .add(&self.suffix, suffix_color, suffix_flags(RenderFlags::None))
+                    .get()
             }
-            Value::Str(ref value) => {
-                if self.ignore_decoration {
-                    BlockBuilder::new()
-                        .add(value, self.color, suffix_flags(RenderFlags::Name))
-                        .get()
-                } else {
-                    BlockBuilder::new()
-                        .add(
-                            &self.prefix,
-                            self.prefix_color.unwrap_or(self.color),
-                            RenderFlags::None,
-                        )
-                        .add(value, self.color, RenderFlags::Name)
-                        .add(
-                            &self.suffix,
-                            self.suffix_color.unwrap_or(self.color),
-                            suffix_flags(RenderFlags::None),
-                        )
-                        .get()
-                }
-            }
+
+            Value::Str(ref value) => BlockBuilder::new()
+                .add(
+                    &self.prefix,
+                    self.prefix_color.unwrap_or(self.color),
+                    RenderFlags::None,
+                )
+                .add(
+                    &self.iprefix,
+                    self.prefix_color.unwrap_or(self.color),
+                    RenderFlags::None,
+                )
+                .add(value, self.color, RenderFlags::Name)
+                .add(
+                    &self.isuffix,
+                    self.suffix_color.unwrap_or(self.color),
+                    suffix_flags(RenderFlags::None),
+                )
+                .add(
+                    &self.suffix,
+                    self.suffix_color.unwrap_or(self.color),
+                    suffix_flags(RenderFlags::None),
+                )
+                .get(),
             Value::Invalid => BlockBuilder::new()
                 .add(
                     &self.invalid,
@@ -264,11 +264,11 @@ impl Base {
     }
 
     pub fn set_prefix(&mut self, prefix: &str) {
-        self.prefix = prefix.to_owned();
+        self.iprefix = prefix.to_owned();
     }
 
     pub fn set_suffix(&mut self, suffix: &str) {
-        self.suffix = suffix.to_owned();
+        self.isuffix = suffix.to_owned();
     }
 
     pub fn set_color(&mut self, color: u32) {
@@ -277,10 +277,6 @@ impl Base {
 
     pub fn set_name(&mut self, name: String) {
         self.name = name;
-    }
-
-    pub fn set_ignore_decoration(&mut self, value: bool) {
-        self.ignore_decoration = value;
     }
 
     pub fn index(&self) -> usize {
