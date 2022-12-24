@@ -66,7 +66,7 @@ impl AlsaDevice {
 
 impl SoundService for AlsaDevice {
     fn id(&self) -> String {
-        return "alsa".to_owned();
+        "alsa".to_owned()
     }
 
     fn sink_name(&self) -> String {

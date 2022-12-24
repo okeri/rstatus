@@ -38,7 +38,7 @@ fn default_wifi() -> String {
 
 fn parse_wifi_str(interface: &str, text: String) -> Result<u32, ()> {
     for line in text.split('\n') {
-        if line.find(interface).is_some() {
+        if line.contains(interface) {
             let linedata: Vec<&str> = line.split_whitespace().collect();
             return linedata[2][0..linedata[2].len() - 1]
                 .parse::<u32>()
@@ -46,7 +46,7 @@ fn parse_wifi_str(interface: &str, text: String) -> Result<u32, ()> {
                 .map_err(|_| ());
         }
     }
-    return Err(());
+    Err(())
 }
 
 fn get_wifi_str(interface: &str) -> Result<u32, ()> {
@@ -61,13 +61,11 @@ fn get_active_interface() -> Result<String, ()> {
         let mut iface = "".to_owned();
         for line in text.split('\n').filter(|value| !value.contains("Iface")) {
             let linedata: Vec<&str> = line.split_whitespace().collect();
-            if linedata.len() > 4 {
-                if linedata[1] == "00000000" {
-                    let metric = linedata[5].parse::<u32>().unwrap_or(0xffff);
-                    if metric < lowest_metric {
-                        lowest_metric = metric;
-                        iface = linedata[0].to_owned();
-                    }
+            if linedata.len() > 4 && linedata[1] == "00000000" {
+                let metric = linedata[5].parse::<u32>().unwrap_or(0xffff);
+                if metric < lowest_metric {
+                    lowest_metric = metric;
+                    iface = linedata[0].to_owned();
                 }
             }
         }

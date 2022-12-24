@@ -119,7 +119,7 @@ impl PulseDevice {
                 }
             }
         }
-        return None;
+        None
     }
 
     fn update_cache<'a>(
@@ -127,8 +127,8 @@ impl PulseDevice {
         cache: &'a Rc<RefCell<PulseCache>>,
         block_index: usize,
     ) {
-        let context_ref = Rc::clone(&context);
-        let cache_ref = Rc::clone(&cache);
+        let context_ref = Rc::clone(context);
+        let cache_ref = Rc::clone(cache);
         context
             .borrow_mut()
             .introspect()
@@ -136,7 +136,7 @@ impl PulseDevice {
                 if let Some(ref def) = si.default_sink_name {
                     let cache_ref2 = Rc::clone(&cache_ref);
                     context_ref.borrow_mut().introspect().get_sink_info_by_name(
-                        &def.to_owned().to_string(),
+                        &def.clone(),
                         move |def| {
                             if let callbacks::ListResult::Item(sink) = def {
                                 cache_ref2.borrow_mut().update(sink);

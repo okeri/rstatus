@@ -39,7 +39,7 @@ impl From<u8> for RenderFlags {
 
 impl Clone for RenderFlags {
     fn clone(&self) -> Self {
-        return RenderFlags::from(*self as u8);
+        RenderFlags::from(*self as u8)
     }
 }
 
@@ -73,8 +73,8 @@ impl SubBlock {
     fn new(text: &str, color: u32, flags: RenderFlags) -> Self {
         SubBlock {
             text: text.to_owned(),
-            color: color,
-            flags: flags,
+            color,
+            flags,
         }
     }
 }

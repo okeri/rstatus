@@ -77,24 +77,22 @@ impl Block {
                 false
             };
 
-            if service.id() != "PulseAudio" {
-                if self.jack_plugged != jack_plugged {
-                    if jack_plugged {
-                        if self.alsa_jack_switch_outputs {
-                            service.set_mute("Speaker", true);
-                            service.set_mute("Headphone", false);
-                        }
-                        if self.alsa_jack_unmute_on_plug {
-                            service.set_mute("Master", false);
-                        }
-                    } else {
-                        if self.alsa_jack_switch_outputs {
-                            service.set_mute("Speaker", false);
-                            service.set_mute("Headphone", true);
-                        }
-                        if self.alsa_jack_mute_on_unplug {
-                            service.set_mute("Master", true);
-                        }
+            if service.id() != "PulseAudio" && self.jack_plugged != jack_plugged {
+                if jack_plugged {
+                    if self.alsa_jack_switch_outputs {
+                        service.set_mute("Speaker", true);
+                        service.set_mute("Headphone", false);
+                    }
+                    if self.alsa_jack_unmute_on_plug {
+                        service.set_mute("Master", false);
+                    }
+                } else {
+                    if self.alsa_jack_switch_outputs {
+                        service.set_mute("Speaker", false);
+                        service.set_mute("Headphone", true);
+                    }
+                    if self.alsa_jack_mute_on_unplug {
+                        service.set_mute("Master", true);
                     }
                 }
             }
@@ -103,8 +101,7 @@ impl Block {
 
             self.base.value = if self.master_exists {
                 if self.jack_icons.len() > 1 {
-                    if self.jack_plugged ||
-			self.jack_only.contains(&service.sink_name()) {
+                    if self.jack_plugged || self.jack_only.contains(&service.sink_name()) {
                         self.base.set_prefix(&self.jack_icons[0]);
                     } else {
                         self.base.set_prefix(&self.jack_icons[1]);
@@ -131,13 +128,12 @@ impl block::Block for Block {
     impl_Block!();
     fn update(&mut self) {
         if self.service.is_none() {
-	    if let Some(pulse) = PulseDevice::new() {
+            if let Some(pulse) = PulseDevice::new() {
                 self.service = Some(Box::from(pulse));
-            } else {
-                if let Some(alsa) = AlsaDevice::new(&self.card) {
-                    self.service = Some(Box::from(alsa));
-                }
+            } else if let Some(alsa) = AlsaDevice::new(&self.card) {
+                self.service = Some(Box::from(alsa));
             }
+
             if let Some(ref mut service) = self.service {
                 if let Some(plugged) = service.jack_plugged() {
                     self.jack_plugged = plugged;

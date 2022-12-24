@@ -30,7 +30,7 @@ pub struct Block {
 impl block::Block for Block {
     impl_Block!();
     fn update(&mut self) {
-        self.base.value = Value::new(format!("{}", Local::now().format(&self.format)).to_owned());
+        self.base.value = Value::new(format!("{}", Local::now().format(&self.format)));
     }
 }
 

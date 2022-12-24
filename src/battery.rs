@@ -14,7 +14,7 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 
-use super::base::{Base, Value, default_zero, default_str_none};
+use super::base::{default_str_none, default_zero, Base, Value};
 use super::block;
 use serde::Deserialize;
 use std::collections::BTreeMap;
@@ -45,7 +45,7 @@ impl block::Block for Block {
 
     fn update(&mut self) {
         let status_raw = std::fs::read_to_string(&(self.sensor.clone() + "/status"))
-            .unwrap_or("error".to_string());
+            .unwrap_or_else(|_| "error".to_string());
 
         let status = status_raw.trim();
         if status == "error" {
@@ -63,19 +63,19 @@ impl block::Block for Block {
             .map_err(|_| ())
             .and_then(|text| text.trim().parse::<u32>().map_err(|_| ()));
 
-	if let Some(ref action) = self.warning_action {
-	    if status == "Discharging" {
-		if let Ok(v) = value {
-		    if v < self.warning_level {
-			std::process::Command::new("sh")
-			    .arg("-c")
-			    .arg(action)
-			    .status()
-			    .expect(&format!("failed to execute {}", action));
-		    }
-		}
-	    }
-	}
+        if let Some(ref action) = self.warning_action {
+            if status == "Discharging" {
+                if let Ok(v) = value {
+                    if v < self.warning_level {
+                        std::process::Command::new("sh")
+                            .arg("-c")
+                            .arg(action)
+                            .status()
+                            .unwrap_or_else(|_| panic!("failed to execute {}", action));
+                    }
+                }
+            }
+        }
         self.base.value = Value::new(value);
     }
 }

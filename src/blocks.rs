@@ -16,7 +16,6 @@
 
 use super::block::Block;
 use serde::Deserialize;
-use serde_yaml;
 use std::sync::{Arc, Mutex, Once};
 
 macro_rules! all_blocks {
@@ -96,10 +95,8 @@ fn init_from_config(config_path: &std::path::Path) -> BlocksCollection {
         std::fs::read_to_string(config_path.to_str().unwrap()).expect("cannot find config file");
     let mut vals: Vec<Blocks> = serde_yaml::from_str(&data).expect("failed parse config file");
     let mut result: BlocksCollection = vals.drain(..).map(to_box).collect();
-    let mut index = 0;
-    for block in result.iter_mut() {
+    for (index, block) in result.iter_mut().enumerate() {
         block.set_index(index);
-        index += 1;
     }
     result
 }

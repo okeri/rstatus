@@ -36,7 +36,7 @@ impl block::Block for Block {
             .arg("-c")
             .arg(&self.command)
             .output()
-            .expect(&format!("failed to execute command '{}'", self.command));
+            .unwrap_or_else(|_| panic!("failed to execute command '{}'", self.command));
 
         let strval = str::from_utf8(&output.stdout)
             .expect("custom process returned bad output")
@@ -48,12 +48,10 @@ impl block::Block for Block {
             1 => {
                 if let Ok(value) = data[0].parse::<u32>() {
                     Value::new(value)
+                } else if !data[0].is_empty() {
+                    Value::new(data[0])
                 } else {
-                    if data[0].len() > 0 {
-                        Value::new(data[0])
-                    } else {
-                        Value::Invalid
-                    }
+                    Value::Invalid
                 }
             }
             _ => {
