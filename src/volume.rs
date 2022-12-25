@@ -14,12 +14,82 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 
+#[cfg(feature = "alsa")]
 use super::alsa_dev::AlsaDevice;
+
+#[cfg(feature = "pulse")]
+use super::pulse_dev::PulseDevice;
+
+#[cfg(feature = "pipewire")]
+use super::pipewire_dev::PipewireDevice;
+
 use super::base::{default_false, Base, Value};
 use super::block;
-use super::pulse_dev::PulseDevice;
 use super::sound_service::SoundService;
 use serde::Deserialize;
+
+macro_rules! impl_volume_stub {
+    ($dev_name:ident) => {
+        struct $dev_name {}
+
+        impl SoundService for $dev_name {
+            fn id(&self) -> String {
+                "unimplemented".to_owned()
+            }
+
+            fn sink_name(&self) -> String {
+                "".to_owned()
+            }
+
+            fn listen(&mut self, _block_index: usize) {}
+
+            fn volume(&self, _mixer: &str) -> Option<u32> {
+                None
+            }
+
+            fn jack_plugged(&self) -> Option<bool> {
+                None
+            }
+
+            fn exists(&self, _mixer: &str) -> bool {
+                false
+            }
+
+            fn update(&self) {}
+
+            fn set_mute(&self, _mixer: &str, _value: bool) {}
+        }
+    };
+}
+
+#[cfg(not(feature = "alsa"))]
+impl_volume_stub!(AlsaDevice);
+
+#[cfg(not(feature = "alsa"))]
+impl AlsaDevice {
+    pub fn new(_card: &str) -> Option<AlsaDevice> {
+        None
+    }
+}
+#[cfg(not(feature = "pulse"))]
+impl_volume_stub!(PulseDevice);
+
+#[cfg(not(feature = "pulse"))]
+impl PulseDevice {
+    pub fn new() -> Option<PulseDevice> {
+        None
+    }
+}
+
+#[cfg(not(feature = "pipewire"))]
+impl_volume_stub!(PipewireDevice);
+
+#[cfg(not(feature = "pipewire"))]
+impl PipewireDevice {
+    pub fn new(_block_index: usize) -> Option<PipewireDevice> {
+        None
+    }
+}
 
 #[derive(Deserialize)]
 pub struct Block {
@@ -77,22 +147,24 @@ impl Block {
                 false
             };
 
-            if service.id() != "PulseAudio" && self.jack_plugged != jack_plugged {
-                if jack_plugged {
-                    if self.alsa_jack_switch_outputs {
-                        service.set_mute("Speaker", true);
-                        service.set_mute("Headphone", false);
-                    }
-                    if self.alsa_jack_unmute_on_plug {
-                        service.set_mute("Master", false);
-                    }
-                } else {
-                    if self.alsa_jack_switch_outputs {
-                        service.set_mute("Speaker", false);
-                        service.set_mute("Headphone", true);
-                    }
-                    if self.alsa_jack_mute_on_unplug {
-                        service.set_mute("Master", true);
+            if cfg!(feature = "alsa") {
+                if service.id() == "alsa" && self.jack_plugged != jack_plugged {
+                    if jack_plugged {
+                        if self.alsa_jack_switch_outputs {
+                            service.set_mute("Speaker", true);
+                            service.set_mute("Headphone", false);
+                        }
+                        if self.alsa_jack_unmute_on_plug {
+                            service.set_mute("Master", false);
+                        }
+                    } else {
+                        if self.alsa_jack_switch_outputs {
+                            service.set_mute("Speaker", false);
+                            service.set_mute("Headphone", true);
+                        }
+                        if self.alsa_jack_mute_on_unplug {
+                            service.set_mute("Master", true);
+                        }
                     }
                 }
             }
@@ -128,19 +200,29 @@ impl block::Block for Block {
     impl_Block!();
     fn update(&mut self) {
         if self.service.is_none() {
-            if let Some(pulse) = PulseDevice::new() {
-                self.service = Some(Box::from(pulse));
-            } else if let Some(alsa) = AlsaDevice::new(&self.card) {
-                self.service = Some(Box::from(alsa));
-            }
-
-            if let Some(ref mut service) = self.service {
-                if let Some(plugged) = service.jack_plugged() {
-                    self.jack_plugged = plugged;
+            if cfg!(feature = "pipewire") {
+                if let Some(pipewire) = PipewireDevice::new(self.base.index()) {
+                    self.service = Some(Box::from(pipewire));
                 }
-                self.master_exists = service.exists("Master");
-                service.listen(self.base.index());
             }
+            if self.service.is_none() && cfg!(feature = "pulse") {
+                if let Some(pulse) = PulseDevice::new() {
+                    self.service = Some(Box::from(pulse));
+                }
+            }
+            if self.service.is_none() && cfg!(feature = "alsa") {
+                if let Some(alsa) = AlsaDevice::new(&self.card) {
+                    self.service = Some(Box::from(alsa));
+                }
+            }
+        }
+
+        if let Some(ref mut service) = self.service {
+            if let Some(plugged) = service.jack_plugged() {
+                self.jack_plugged = plugged;
+            }
+            self.master_exists = service.exists("Master");
+            service.listen(self.base.index());
         }
         self.handle_events();
     }

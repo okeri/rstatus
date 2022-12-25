@@ -7,7 +7,14 @@ edition = "2018"
 [dependencies]
 chrono = "*"
 libc = "*"
-alsa = "*"
 serde = { version = "*", features = ["derive"] }
 serde_yaml = "*"
-libpulse-binding = "*"
+
+alsa = { version = "*", optional = true }
+libpulse-binding = { version = "*", optional = true }
+pipewire = { optional = true,  git = "https://gitlab.freedesktop.org/ryuukyu/pipewire-rs.git", branch = "params" }
+
+
+[features]
+pulse = ["dep:libpulse-binding"]
+default = ["pulse"]

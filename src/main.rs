@@ -20,9 +20,17 @@ mod block;
 
 #[macro_use]
 mod blocks;
-mod alsa_dev;
-mod block_builder;
+
+#[cfg(feature = "pulse")]
 mod pulse_dev;
+
+#[cfg(feature = "alsa")]
+mod alsa_dev;
+
+#[cfg(feature = "pipewire")]
+mod pipewire_dev;
+
+mod block_builder;
 mod sound_service;
 mod utility;
 
