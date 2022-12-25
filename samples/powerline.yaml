@@ -1,11 +1,11 @@
-  - custom:
+  - !custom
       command: 'echo test'
       interval: 15
       custom_separator: '\ue0b2'
       bgcolor: '#202020'
       retry: 5
 
-  - temperature:
+  - !temperature
       sensor: '/sys/class/thermal/thermal_zone0/temp'
       prefix: '  '
       custom_separator: '\ue0b2'
@@ -17,7 +17,7 @@
         60: '#FFF600'
         70: '#FF0000'
 
-  - memory:
+  - !memory
       prefix: '  '
       custom_separator: '\ue0b2'
       bgcolor: '#501010'
@@ -28,7 +28,7 @@
         40: '#FFF600'
         70: '#FF0000'
 
-  - filesystem:
+  - !filesystem
       path: '/tmp'
       interval: 5
       custom_separator: '\ue0b2'
@@ -40,7 +40,7 @@
         40: '#FFF600'
         70: '#FF0000'
 
-  - volume:
+  - !volume
       mixer: 'Master'
       custom_separator: '\ue0b2'
       bgcolor: '#202040'
@@ -49,7 +49,7 @@
       invalid: " ♪ muted "
       invalid_color: "#FFF600"
 
-  - network:
+  - !network
       interval: 4
       prefix: "  "
       suffix: "% "
@@ -63,7 +63,7 @@
         50: '#FFF600'
         80: '#00FF00'
 
-  - battery:
+  - !battery
       sensor: '/sys/class/power_supply/BAT1'
       interval: 10
       custom_separator: '\ue0b2'
@@ -81,7 +81,7 @@
           prefix: '  '
           suffix: '% '
 
-  - time:
+  - !time
       format: '   %d.%m.%Y  %H:%M'
       custom_separator: '\ue0b2'
       color: '#CCCCCC'

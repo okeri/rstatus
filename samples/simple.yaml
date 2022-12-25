@@ -1,10 +1,10 @@
-  - custom:
+  - !custom
       command: 'echo test'
       interval: 15
       separator_width: 20
       retry: 5
 
-  - temperature:
+  - !temperature
       sensor: '/sys/class/thermal/thermal_zone0/temp'
       suffix: " °C"
       interval: 3
@@ -14,7 +14,7 @@
         60: '#FFF600'
         70: '#FF0000'
 
-  - memory:
+  - !memory
       prefix: ' '
       suffix: '%'
       interval: 5
@@ -24,7 +24,7 @@
         40: '#FFF600'
         70: '#FF0000'
 
-  - filesystem:
+  - !filesystem
       path: '/tmp'
       interval: 5
       prefix: ' '
@@ -35,14 +35,14 @@
         40: '#FFF600'
         70: '#FF0000'
 
-  - volume:
+  - !volume
       mixer: 'Master'
       separator_width: 20
       prefix: " "
       invalid: "♪ muted"
       invalid_color: "#FFF600"
 
-  - network:
+  - !network
       interval: 4
       prefix: " "
       suffix: "%"
@@ -55,7 +55,7 @@
         50: '#FFF600'
         80: '#00FF00'
 
-  - battery:
+  - !battery
       sensor: '/sys/class/power_supply/BAT1'
       interval: 10
       separator_width: 20
@@ -71,7 +71,7 @@
           prefix: ' '
           suffix: '%'
 
-  - time:
+  - !time
       format: '%d.%m.%Y %H:%M'
       interval: 1
       separator_width: 20
