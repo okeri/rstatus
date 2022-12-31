@@ -168,6 +168,7 @@ impl MonitorData {
         }
         if let Some(def_sink) = self.def_sink.as_ref() {
             if let Some(sink) = self.sinks.iter().find(|s| &s.1.name == def_sink) {
+                self.def_sink_id = *sink.0;
                 if let Ok(mut cache) = self.cache.lock() {
                     cache.update_name(def_sink.to_owned());
                     cache.update_vol(sink.1.volume);
@@ -189,7 +190,6 @@ impl MonitorData {
                 }
             }
         }
-        self.sink_id = id;
     }
 
     fn update_volume(&mut self, volume: Volume) {
@@ -253,20 +253,21 @@ impl PipewireDevice {
                                 let obj_listener = node
                                     .add_listener_local()
                                     .info(move |info| {
-                                        if let Some(props) = info.props() {
-                                            if let Some(mon) = mon_info_weak.upgrade() {
+                                        if let Some(mon) = mon_info_weak.upgrade() {
+                                            if let Some(props) = info.props() {
                                                 mon.borrow_mut()
                                                     .update_sink(props.get("node.name"), info.id());
-                                                if let Some(node) =
-                                                    mon.borrow_mut().nodes.get_mut(&proxy_id)
-                                                {
-                                                    node.proxy().enum_params(
-                                                        0,
-                                                        Some(ParamType::Props),
-                                                        0,
-                                                        4,
-                                                    )
-                                                }
+                                            }
+                                            mon.borrow_mut().sink_id = info.id();
+                                            if let Some(node) =
+                                                mon.borrow_mut().nodes.get_mut(&proxy_id)
+                                            {
+                                                node.proxy().enum_params(
+                                                    0,
+                                                    Some(ParamType::Props),
+                                                    0,
+                                                    4,
+                                                )
                                             }
                                         }
                                     })
