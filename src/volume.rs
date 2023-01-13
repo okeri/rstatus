@@ -217,13 +217,13 @@ impl block::Block for Block {
             }
 
             if let Some(ref mut service) = self.service {
-		if let Some(plugged) = service.jack_plugged() {
+                if let Some(plugged) = service.jack_plugged() {
                     self.jack_plugged = plugged;
-		}
-		self.master_exists = service.exists("Master");
-		service.listen(self.base.index());
+                }
+                self.master_exists = service.exists("Master");
+                service.listen(self.base.index());
             }
-	}
+        }
         self.handle_events();
     }
 }
