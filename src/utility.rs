@@ -14,8 +14,11 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 
-use std::{fs, io, mem, ptr, str};
-
+use std::{
+    fs, io,
+    mem::{zeroed, MaybeUninit},
+    ptr, str,
+};
 pub const SIGRTMIN: i32 = 34;
 
 pub fn read_filen(filename: &str, max: usize) -> Result<String, io::Error> {
@@ -40,8 +43,9 @@ pub fn gcd(i1: u32, i2: u32) -> u32 {
 
 pub fn mask(signals: Vec<i32>) {
     unsafe {
-        let mut sigset = mem::MaybeUninit::uninit().assume_init();
-        if libc::sigemptyset(&mut sigset) != -1 {
+        let mut sigset = MaybeUninit::uninit();
+        if libc::sigemptyset(sigset.as_mut_ptr()) != -1 {
+            let mut sigset = sigset.assume_init();
             for signal in signals.iter() {
                 libc::sigaddset(&mut sigset, SIGRTMIN + signal);
             }
@@ -52,10 +56,10 @@ pub fn mask(signals: Vec<i32>) {
 
 pub fn signal(signal: i32, action: fn(i32)) {
     unsafe {
-        let mut sigset = mem::MaybeUninit::uninit().assume_init();
-        if libc::sigfillset(&mut sigset) != -1 {
-            let mut sigaction: libc::sigaction = mem::zeroed();
-            sigaction.sa_mask = sigset;
+        let mut sigset = MaybeUninit::uninit();
+        if libc::sigfillset(sigset.as_mut_ptr()) != -1 {
+            let mut sigaction: libc::sigaction = zeroed();
+            sigaction.sa_mask = sigset.assume_init();
             sigaction.sa_sigaction = action as usize;
             libc::sigaction(signal + SIGRTMIN, &sigaction, ptr::null_mut());
         }
