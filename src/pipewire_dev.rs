@@ -73,13 +73,15 @@ impl<T> Proxy<T> {
 
 struct Sink {
     name: String,
+    card_name: String,
     volume: Volume,
 }
 
 impl Sink {
-    fn new(name: String) -> Self {
+    fn new(name: String, card_name: String) -> Self {
         Sink {
             name,
+            card_name,
             volume: Volume::new(),
         }
     }
@@ -170,7 +172,7 @@ impl MonitorData {
             if let Some(sink) = self.sinks.iter().find(|s| &s.1.name == def_sink) {
                 self.def_sink_id = *sink.0;
                 if let Ok(mut cache) = self.cache.lock() {
-                    cache.update_name(def_sink.to_owned());
+                    cache.update_name(sink.1.card_name.to_owned());
                     cache.update_vol(sink.1.volume);
                 }
                 update_by_index(self.block_index);
@@ -178,12 +180,18 @@ impl MonitorData {
         }
     }
 
-    fn update_sink(&mut self, sink_name: Option<&str>, id: u32) {
+    fn update_sink(&mut self, sink_name: Option<&str>, card_name: Option<&str>, id: u32) {
         if let Some(name) = sink_name {
+            let cache = &self.cache;
             self.sinks
                 .entry(id)
                 .and_modify(|s| s.name = name.to_string())
-                .or_insert_with(|| Sink::new(name.to_string()));
+                .or_insert_with(|| {
+                    if let Some(card) = card_name {
+                        cache.lock().unwrap().update_name(card.to_owned());
+                    }
+                    Sink::new(name.to_string(), card_name.unwrap().to_owned())
+                });
             if let Some(ref def_sink) = self.def_sink {
                 if def_sink == name {
                     self.def_sink_id = id;
@@ -193,12 +201,9 @@ impl MonitorData {
     }
 
     fn update_volume(&mut self, volume: Volume) {
-        self.sinks
-            .entry(self.sink_id)
-            .and_modify(|s| {
-                s.volume = volume;
-            })
-            .or_insert_with(|| Sink::new("".to_string()));
+        self.sinks.entry(self.sink_id).and_modify(|s| {
+            s.volume = volume;
+        });
         if self.sink_id == self.def_sink_id {
             self.cache.lock().unwrap().update_vol(volume);
             update_by_index(self.block_index);
@@ -255,8 +260,11 @@ impl PipewireDevice {
                                     .info(move |info| {
                                         if let Some(mon) = mon_info_weak.upgrade() {
                                             if let Some(props) = info.props() {
-                                                mon.borrow_mut()
-                                                    .update_sink(props.get("node.name"), info.id());
+                                                mon.borrow_mut().update_sink(
+                                                    props.get("node.name"),
+                                                    props.get("node.nick"),
+                                                    info.id(),
+                                                );
                                             }
                                             mon.borrow_mut().sink_id = info.id();
                                             if let Some(node) =
