@@ -86,7 +86,7 @@ impl_volume_stub!(PipewireDevice);
 
 #[cfg(not(feature = "pipewire"))]
 impl PipewireDevice {
-    pub fn new(_block_index: usize) -> Option<PipewireDevice> {
+    pub fn new() -> Option<PipewireDevice> {
         None
     }
 }
@@ -201,7 +201,7 @@ impl block::Block for Block {
     fn update(&mut self) {
         if self.service.is_none() {
             if cfg!(feature = "pipewire") {
-                if let Some(pipewire) = PipewireDevice::new(self.base.index()) {
+                if let Some(pipewire) = PipewireDevice::new() {
                     self.service = Some(Box::from(pipewire));
                 }
             }
