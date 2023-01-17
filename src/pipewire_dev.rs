@@ -266,9 +266,10 @@ impl Monitor {
                 .property(move |_subject, key, _type, value| {
                     if let Some(k) = key {
                         if k == "default.audio.sink" {
-                            if let Some(data) = data_weak.upgrade() {
-                                data.borrow_mut()
-                                    .set_default_sink(value.unwrap().to_string());
+                            if let Some(v) = value {
+                                if let Some(data) = data_weak.upgrade() {
+                                    data.borrow_mut().set_default_sink(v.to_string());
+                                }
                             }
                         }
                     }
