@@ -249,7 +249,7 @@ impl Monitor {
         let ref props = sink_obj.props.as_ref().unwrap();
         let sink = Sink::new(
             props.get("node.name").unwrap().to_string(),
-            props.get("node.nick").unwrap().to_string(),
+            props.get("node.nick").unwrap_or("unknown").to_string(),
             node_proxy,
         );
         let mut data = self.data.borrow_mut();
@@ -311,13 +311,23 @@ impl SoundService for PipewireDevice {
     }
 
     fn listen(&mut self, block_index: usize) {
-        let cache_clone = self.cache.clone();
-        thread::spawn(move || {
+        let cache2 = self.cache.clone();
+        thread::spawn(move || loop {
+            let cache_clone = cache2.clone();
             let monitor = Monitor::new(block_index, cache_clone);
             let main_loop = pw::MainLoop::new().expect("cannot create loop");
 
             let context = pw::Context::new(&main_loop).unwrap();
+            let main_loop_weak = main_loop.downgrade();
             let core = context.connect(None).unwrap();
+            let _core_listener = core
+                .add_listener_local()
+                .error(move |_, _, _, _| {
+                    if let Some(main_loop) = main_loop_weak.upgrade() {
+                        main_loop.quit();
+                    }
+                })
+                .register();
 
             let registry = Arc::new(core.get_registry().unwrap());
             let registry_weak = Arc::downgrade(&registry);
