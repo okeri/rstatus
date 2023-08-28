@@ -23,7 +23,7 @@ impl From<u8> for RenderFlags {
 
 impl Clone for RenderFlags {
     fn clone(&self) -> Self {
-        RenderFlags::from(*self as u8)
+        *self
     }
 }
 

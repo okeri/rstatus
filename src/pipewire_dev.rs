@@ -171,7 +171,7 @@ impl Monitor {
         }
     }
 
-    fn add_sink(&self, registry: Arc<Registry>, sink_obj: &GlobalObject<ForeignDict>) {
+    fn add_sink(&self, registry: Rc<Registry>, sink_obj: &GlobalObject<ForeignDict>) {
         let node: Node = registry.bind(sink_obj).unwrap();
         let mon_weak = Rc::downgrade(&self.data);
         let mon_weak_info = Rc::downgrade(&self.data);
@@ -235,7 +235,7 @@ impl Monitor {
         let node_proxy = Proxy::<Node>::new(node)
             .listener(node_listener)
             .listener(rm_listener);
-        let ref props = sink_obj.props.as_ref().unwrap();
+        let props = sink_obj.props.as_ref().unwrap();
         let sink = Sink::new(
             props.get("node.name").unwrap().to_string(),
             props.get("node.nick").unwrap_or("unknown").to_string(),
@@ -246,7 +246,7 @@ impl Monitor {
         data.sinks.insert(id, sink);
     }
 
-    fn set_meta(&self, registry: Arc<Registry>, meta_obj: &GlobalObject<ForeignDict>) {
+    fn set_meta(&self, registry: Rc<Registry>, meta_obj: &GlobalObject<ForeignDict>) {
         let metadata: Metadata = registry.bind(meta_obj).unwrap();
         let data_weak = Rc::downgrade(&self.data);
         let obj_listener = Box::new(
@@ -318,8 +318,8 @@ impl SoundService for PipewireDevice {
                 })
                 .register();
 
-            let registry = Arc::new(core.get_registry().unwrap());
-            let registry_weak = Arc::downgrade(&registry);
+            let registry = Rc::new(core.get_registry().unwrap());
+            let registry_weak = Rc::downgrade(&registry);
 
             let check_prop = |props: &Option<ForeignDict>, key: &str, value: &str| -> bool {
                 let mut result = false;

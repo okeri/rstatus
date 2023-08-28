@@ -17,7 +17,7 @@ impl block::Block for Block {
         unsafe {
             let path = CString::new(self.path.clone()).unwrap();
             let mut usage: libc::statvfs = mem::zeroed();
-            self.base.value = if libc::statvfs(path.as_ptr() as *const i8, &mut usage) == -1 {
+            self.base.value = if libc::statvfs(path.as_ptr(), &mut usage) == -1 {
                 Value::Invalid
             } else {
                 let used = (100 * (usage.f_blocks - usage.f_bfree) / usage.f_blocks) as u32;

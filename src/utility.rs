@@ -33,7 +33,7 @@ pub fn mask(signals: Vec<i32>) {
             for signal in signals.iter() {
                 libc::sigaddset(&mut sigset, SIGRTMIN + signal);
             }
-            libc::pthread_sigmask(libc::SIG_BLOCK, &mut sigset, ptr::null_mut());
+            libc::pthread_sigmask(libc::SIG_BLOCK, &sigset, ptr::null_mut());
         }
     }
 }

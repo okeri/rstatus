@@ -28,7 +28,7 @@ impl block::Block for Block {
     impl_Block!();
 
     fn update(&mut self) {
-        let status_raw = std::fs::read_to_string(&(self.sensor.clone() + "/status"))
+        let status_raw = std::fs::read_to_string(self.sensor.clone() + "/status")
             .unwrap_or_else(|_| "error".to_string());
 
         let status = status_raw.trim();
@@ -43,7 +43,7 @@ impl block::Block for Block {
             self.base.set_suffix(&d.suffix);
         }
 
-        let value = std::fs::read_to_string(&(self.sensor.clone() + "/capacity"))
+        let value = std::fs::read_to_string(self.sensor.clone() + "/capacity")
             .map_err(|_| ())
             .and_then(|text| text.trim().parse::<u32>().map_err(|_| ()));
 

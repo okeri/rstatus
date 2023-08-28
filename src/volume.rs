@@ -131,24 +131,23 @@ impl Block {
                 false
             };
 
-            if cfg!(feature = "alsa") {
-                if service.id() == "alsa" && self.jack_plugged != jack_plugged {
-                    if jack_plugged {
-                        if self.alsa_jack_switch_outputs {
-                            service.set_mute("Speaker", true);
-                            service.set_mute("Headphone", false);
-                        }
-                        if self.alsa_jack_unmute_on_plug {
-                            service.set_mute("Master", false);
-                        }
-                    } else {
-                        if self.alsa_jack_switch_outputs {
-                            service.set_mute("Speaker", false);
-                            service.set_mute("Headphone", true);
-                        }
-                        if self.alsa_jack_mute_on_unplug {
-                            service.set_mute("Master", true);
-                        }
+            if cfg!(feature = "alsa") && service.id() == "alsa" && self.jack_plugged != jack_plugged
+            {
+                if jack_plugged {
+                    if self.alsa_jack_switch_outputs {
+                        service.set_mute("Speaker", true);
+                        service.set_mute("Headphone", false);
+                    }
+                    if self.alsa_jack_unmute_on_plug {
+                        service.set_mute("Master", false);
+                    }
+                } else {
+                    if self.alsa_jack_switch_outputs {
+                        service.set_mute("Speaker", false);
+                        service.set_mute("Headphone", true);
+                    }
+                    if self.alsa_jack_mute_on_unplug {
+                        service.set_mute("Master", true);
                     }
                 }
             }

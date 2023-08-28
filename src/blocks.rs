@@ -1,5 +1,6 @@
 use super::block::Block;
 use serde::Deserialize;
+use std::rc::Rc;
 use std::sync::{Arc, Mutex, Once};
 
 macro_rules! all_blocks {
@@ -67,7 +68,7 @@ pub fn blocks() -> BlocksWrapper {
 
     unsafe {
         ONCE.call_once(|| {
-            let singleton = Arc::new(Mutex::new(init_blocks()));
+            let singleton = Rc::new(Mutex::new(init_blocks()));
             SINGLETON = std::mem::transmute(Box::new(singleton));
         });
         (*SINGLETON).clone()

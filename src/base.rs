@@ -3,43 +3,44 @@ use super::utility::read_color;
 use serde::{Deserialize, Deserializer};
 use std::collections::BTreeMap;
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Default)]
 pub enum Value {
+    #[default]
     Invalid,
     Int(u32),
     Str(String),
 }
 
 pub trait ValueConstructor {
-    fn new(&self) -> Value;
+    fn build(&self) -> Value;
 }
 
 impl ValueConstructor for u32 {
-    fn new(&self) -> Value {
+    fn build(&self) -> Value {
         Value::Int(*self)
     }
 }
 
 impl ValueConstructor for Option<u32> {
-    fn new(&self) -> Value {
+    fn build(&self) -> Value {
         self.map_or(Value::Invalid, Value::Int)
     }
 }
 
 impl ValueConstructor for String {
-    fn new(&self) -> Value {
+    fn build(&self) -> Value {
         Value::Str(self.clone())
     }
 }
 
 impl<'a> ValueConstructor for &'a str {
-    fn new(&self) -> Value {
+    fn build(&self) -> Value {
         Value::Str(self.to_string())
     }
 }
 
 impl<E> ValueConstructor for Result<u32, E> {
-    fn new(&self) -> Value {
+    fn build(&self) -> Value {
         match *self {
             Ok(value) => Value::Int(value),
             Err(_) => Value::Invalid,
@@ -48,7 +49,7 @@ impl<E> ValueConstructor for Result<u32, E> {
 }
 
 impl<E> ValueConstructor for Result<String, E> {
-    fn new(&self) -> Value {
+    fn build(&self) -> Value {
         match *self {
             Ok(ref value) => Value::Str(value.clone()),
             Err(_) => Value::Invalid,
@@ -58,7 +59,7 @@ impl<E> ValueConstructor for Result<String, E> {
 
 impl Value {
     pub fn new<T: ValueConstructor>(arg: T) -> Self {
-        arg.new()
+        arg.build()
     }
 }
 
@@ -336,10 +337,4 @@ fn default_thresholds() -> Thresholds {
 
 pub fn default_false() -> bool {
     false
-}
-
-impl Default for Value {
-    fn default() -> Self {
-        Value::Invalid
-    }
 }
