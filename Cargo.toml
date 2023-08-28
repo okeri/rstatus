@@ -3,6 +3,7 @@ name = "rstatus"
 version = "0.9.5"
 authors = ["Oleg Keri <ezhi99@gmail.com>"]
 edition = "2018"
+license = "MIT"
 
 [dependencies]
 chrono = "*"
@@ -17,4 +18,4 @@ pipewire = { optional = true,  git = "https://gitlab.freedesktop.org/ryuukyu/pip
 
 [features]
 pulse = ["dep:libpulse-binding"]
-default = ["pulse"]
+default = ["pipewire"]
