@@ -13,7 +13,7 @@ serde_yaml = "*"
 
 alsa = { version = "*", optional = true }
 libpulse-binding = { version = "*", optional = true }
-pipewire = { optional = true,  git = "https://gitlab.freedesktop.org/ryuukyu/pipewire-rs.git", branch = "params" }
+pipewire = { optional = true,  version = "0.7.2" }
 
 
 [features]

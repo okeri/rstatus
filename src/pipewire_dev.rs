@@ -189,26 +189,31 @@ impl Monitor {
                     }
                 })
                 .param(move |_seq, _id, _index, _next, param| {
-                    if let Ok(props) = PodDeserializer::deserialize_any_from(param) {
-                        let mut volume: Option<Volume> = None;
-                        if let Value::Object(o) = props.1 {
-                            for i in o.properties.iter() {
-                                if i.key == 0x10004 {
-                                    if let Value::Bool(mute) = i.value {
-                                        volume.get_or_insert(Volume::new()).mute = mute;
-                                    }
-                                } else if i.key == 0x10008 {
-                                    if let Value::ValueArray(ValueArray::Float(volumes)) = &i.value
-                                    {
-                                        let channel_volume =
-                                            (((volumes[0] + volumes[1]) / 2.).cbrt() * 100.) as u32;
-                                        volume.get_or_insert(Volume::new()).volume = channel_volume;
+                    if let Some(p) = param {
+                        if let Ok(props) = PodDeserializer::deserialize_any_from(p.as_bytes()) {
+                            let mut volume: Option<Volume> = None;
+                            if let Value::Object(o) = props.1 {
+                                for i in o.properties.iter() {
+                                    if i.key == 0x10004 {
+                                        if let Value::Bool(mute) = i.value {
+                                            volume.get_or_insert(Volume::new()).mute = mute;
+                                        }
+                                    } else if i.key == 0x10008 {
+                                        if let Value::ValueArray(ValueArray::Float(volumes)) =
+                                            &i.value
+                                        {
+                                            let channel_volume =
+                                                (((volumes[0] + volumes[1]) / 2.).cbrt() * 100.)
+                                                    as u32;
+                                            volume.get_or_insert(Volume::new()).volume =
+                                                channel_volume;
+                                        }
                                     }
                                 }
-                            }
-                            if let Some(vol) = volume {
-                                if let Some(data) = mon_weak_param.upgrade() {
-                                    data.borrow_mut().update_volume(id, vol)
+                                if let Some(vol) = volume {
+                                    if let Some(data) = mon_weak_param.upgrade() {
+                                        data.borrow_mut().update_volume(id, vol)
+                                    }
                                 }
                             }
                         }
