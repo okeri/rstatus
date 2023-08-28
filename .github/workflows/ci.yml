@@ -1,0 +1,39 @@
+name: rstatus build
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Install deps
+        run: |
+          sudo add-apt-repository ppa:pipewire-debian/pipewire-upstream
+          sudo apt-get update -q
+          sudo apt-get install -y libpipewire-0.3-dev libspa-0.2-dev
+        shell: bash
+
+      - name: Install rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+
+      - name: Install cargo-make
+        uses: taiki-e/install-action@cargo-make
+
+      - name: Run cargo make clippy-all
+        run: cargo make clippy
+
+      - name: Build the app
+        run: |
+          cargo build --all-features
+        env:
+          RUST_BACKTRACE: full
+
