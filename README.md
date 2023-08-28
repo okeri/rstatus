@@ -1,5 +1,8 @@
 ## rstatus - bar for tiling wms(i3, sway, etc)
 
+[![Build Status](https://img.shields.io/github/actions/workflow/status/okeri/rstatus/ci.yml?branch=master)](https://github.com/okeri/rstatus/actions) [![MIT](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
+
+
 ### Building
 * cargo build --release
 
