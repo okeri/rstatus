@@ -14,8 +14,11 @@
 * if everything goes ok you could paste rstatus command to config  
 of your tiling wm
 
-### Usage dependencies
-* volume block requires amixer(alsa-utils package)
+### Dependencies
+* wireless-tools(iwlib-dev on some distros)
+* alsa(optional)
+* pipewire(optional)
+* pulseaudio(optional)
 
 
 ### Sample screenshots
