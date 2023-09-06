@@ -10,6 +10,7 @@ chrono = "*"
 libc = "*"
 serde = { version = "*", features = ["derive"] }
 serde_yaml = "*"
+iwlib = "*"
 
 alsa = { version = "*", optional = true }
 libpulse-binding = { version = "*", optional = true }
