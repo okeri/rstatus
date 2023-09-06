@@ -2,7 +2,7 @@
 name = "rstatus"
 version = "0.9.5"
 authors = ["Oleg Keri <ezhi99@gmail.com>"]
-edition = "2018"
+edition = "2021"
 license = "MIT"
 
 [dependencies]
