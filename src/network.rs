@@ -1,6 +1,5 @@
 use super::base::{Base, Value};
 use super::block;
-use iwlib;
 use serde::Deserialize;
 
 #[derive(Deserialize)]
@@ -21,10 +20,38 @@ fn default_wifi() -> String {
     "wifi".to_string()
 }
 
-fn get_wifi_strength(interface: &str) -> Result<u32, ()> {
-    iwlib::get_wireless_info(interface)
-        .ok_or(())
-        .map(|info| info.wi_quality.into())
+fn get_wifi_strength(iname: &str) -> Result<u32, ()> {
+    let perc_lut = vec![
+        100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100,
+        100, 100, 99, 99, 99, 98, 98, 98, 97, 97, 96, 96, 95, 95, 94, 93, 93, 92, 91, 90, 90, 89,
+        88, 87, 86, 85, 84, 83, 82, 81, 80, 79, 78, 76, 75, 74, 73, 71, 70, 69, 67, 66, 64, 63, 61,
+        60, 58, 56, 55, 53, 51, 50, 48, 46, 44, 42, 40, 38, 36, 34, 32, 30, 28, 26, 24, 22, 20, 17,
+        15, 13, 10, 8, 6, 3, 1, 1, 1, 1, 1, 1, 1, 1,
+    ];
+
+    let interfaces = nl80211::Socket::connect()
+        .map_err(|_| ())?
+        .get_interfaces_info()
+        .map_err(|_| ())?;
+
+    for interface in interfaces {
+        if interface.index.is_some() {
+            if let Some(ref name_bytes) = interface.name {
+                let name_bytes = std::str::from_utf8(name_bytes).map_err(|_| ())?;
+                let name = name_bytes
+                    .strip_suffix('\0')
+                    .or(Some(name_bytes))
+                    .ok_or(())?;
+                if name == iname {
+                    let station = interface.get_station_info().map_err(|_| ())?;
+                    let signal: usize =
+                        256 - (*station.signal.ok_or(())?.first().ok_or(())? as usize);
+                    return Ok(perc_lut[signal - 1]);
+                }
+            }
+        }
+    }
+    Err(())
 }
 
 fn get_active_interface() -> Result<String, ()> {

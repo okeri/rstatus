@@ -15,7 +15,6 @@
 of your tiling wm
 
 ### Dependencies
-* wireless-tools(iwlib-dev on some distros)
 * alsa(optional)
 * pipewire(optional)
 * pulseaudio(optional)

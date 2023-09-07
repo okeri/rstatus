@@ -17,7 +17,7 @@ jobs:
         run: |
           sudo add-apt-repository ppa:pipewire-debian/pipewire-upstream 
           sudo apt-get update -q
-          sudo apt-get install -y libpipewire-0.3-dev libspa-0.2-dev libasound2-dev libpulse-dev libiw-dev
+          sudo apt-get install -y libpipewire-0.3-dev libspa-0.2-dev libasound2-dev libpulse-dev
         shell: bash
 
       - name: Install rust
