@@ -45,8 +45,8 @@ fn get_wifi_strength(iname: &str) -> Result<u32, ()> {
                 if name == iname {
                     let station = interface.get_station_info().map_err(|_| ())?;
                     let signal: usize =
-                        256 - (*station.signal.ok_or(())?.first().ok_or(())? as usize);
-                    return Ok(perc_lut[signal - 1]);
+                        255 - (*station.signal.ok_or(())?.first().ok_or(())? as usize);
+                    return Ok(perc_lut[signal.clamp(0, perc_lut.len())]);
                 }
             }
         }
