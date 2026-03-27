@@ -125,11 +125,7 @@ impl Block {
     fn handle_events(&mut self) {
         if let Some(ref service) = self.service {
             service.update();
-            let jack_plugged = if let Some(plugged) = service.jack_plugged() {
-                plugged
-            } else {
-                false
-            };
+            let jack_plugged = service.jack_plugged().unwrap_or_default();
 
             if cfg!(feature = "alsa") && service.id() == "alsa" && self.jack_plugged != jack_plugged
             {

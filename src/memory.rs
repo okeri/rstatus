@@ -9,15 +9,17 @@ pub struct Block {
 }
 
 fn get_mem_usage() -> Result<u32, ()> {
-    std::fs::read_to_string("/proc/meminfo")
-        .map_err(|_| ())
-        .and_then(|text| {
-            let values: Vec<&str> = text.split_whitespace().collect();
-            let total = values[1].trim().parse::<f64>().map_err(|_| ())?;
-            let free = values[7].trim().parse::<f64>().map_err(|_| ())?;
-            let value = (1f64 - free / total) * 100f64;
-            Ok(value as u32)
-        })
+    let text = std::fs::read_to_string("/proc/meminfo").map_err(|_| ())?;
+    let find = |key: &str| -> Option<f64> {
+        let pos = text.find(key)?;
+        text[pos + key.len()..].split_whitespace().next()?.parse().ok()
+    };
+    let total = find("MemTotal:").ok_or(())?;
+    let available = find("MemAvailable:").ok_or(())?;
+    if total == 0.0 {
+        return Err(());
+    }
+    Ok(((1.0 - available / total) * 100.0) as u32)
 }
 
 impl block::Block for Block {

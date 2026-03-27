@@ -16,15 +16,20 @@ impl block::Block for Block {
     fn update(&mut self) {
         use std::process::Command;
         use std::str;
-        let output = Command::new("sh")
-            .arg("-c")
-            .arg(&self.command)
-            .output()
-            .unwrap_or_else(|_| panic!("failed to execute command '{}'", self.command));
-
-        let strval = str::from_utf8(&output.stdout)
-            .expect("custom process returned bad output")
-            .to_string();
+        let output = match Command::new("sh").arg("-c").arg(&self.command).output() {
+            Ok(o) => o,
+            Err(_) => {
+                self.base.value = Value::Invalid;
+                return;
+            }
+        };
+        let strval = match str::from_utf8(&output.stdout) {
+            Ok(s) => s.to_string(),
+            Err(_) => {
+                self.base.value = Value::Invalid;
+                return;
+            }
+        };
 
         let data: Vec<&str> = strval.split('\n').collect();
         self.base.value = match data.len() {

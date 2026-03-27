@@ -1,6 +1,5 @@
 use super::block::Block;
 use serde::Deserialize;
-use std::rc::Rc;
 use std::sync::{Arc, Mutex, Once};
 
 macro_rules! all_blocks {
@@ -63,21 +62,21 @@ type BlocksCollection = Vec<Box<dyn Block>>;
 pub type BlocksWrapper = Arc<Mutex<BlocksCollection>>;
 
 pub fn blocks() -> BlocksWrapper {
-    static mut SINGLETON: *const BlocksWrapper = 0 as *const BlocksWrapper;
+    static mut SINGLETON: *const BlocksWrapper = std::ptr::null();
     static ONCE: Once = Once::new();
 
     unsafe {
         ONCE.call_once(|| {
-            let singleton = Rc::new(Mutex::new(init_blocks()));
-            SINGLETON = std::mem::transmute(Box::new(singleton));
+            #[allow(clippy::arc_with_non_send_sync)]
+            let singleton = Arc::new(Mutex::new(init_blocks()));
+            SINGLETON = Box::into_raw(Box::new(singleton));
         });
         (*SINGLETON).clone()
     }
 }
 
 fn init_from_config(config_path: &std::path::Path) -> BlocksCollection {
-    let data =
-        std::fs::read_to_string(config_path.to_str().unwrap()).expect("cannot find config file");
+    let data = std::fs::read_to_string(config_path).expect("cannot find config file");
     let mut vals: Vec<Blocks> = serde_yaml::from_str(&data).expect("failed parse config file");
     let mut result: BlocksCollection = vals.drain(..).map(to_box).collect();
     for (index, block) in result.iter_mut().enumerate() {

@@ -13,10 +13,10 @@ use pipewire as pw;
 use pw::metadata::Metadata;
 use pw::node::Node;
 use pw::proxy::{Listener, ProxyT};
-use pw::registry::{GlobalObject, Registry};
-use pw::spa::dict::{ForeignDict, ReadableDict};
+use pw::registry::{GlobalObject, RegistryRc};
 use pw::spa::param::ParamType;
 use pw::spa::pod::{deserialize::PodDeserializer, Value, ValueArray};
+use pw::spa::utils::dict::DictRef;
 use pw::types::ObjectType;
 
 #[derive(Copy, Clone)]
@@ -171,8 +171,11 @@ impl Monitor {
         }
     }
 
-    fn add_sink(&self, registry: Rc<Registry>, sink_obj: &GlobalObject<ForeignDict>) {
-        let node: Node = registry.bind(sink_obj).unwrap();
+    fn add_sink(&self, registry: &RegistryRc, sink_obj: &GlobalObject<&DictRef>) {
+        let node: Node = match registry.bind(sink_obj) {
+            Ok(n) => n,
+            Err(_) => return,
+        };
         let mon_weak = Rc::downgrade(&self.data);
         let mon_weak_info = Rc::downgrade(&self.data);
         let mon_weak_param = Rc::downgrade(&self.data);
@@ -235,9 +238,16 @@ impl Monitor {
         let node_proxy = Proxy::<Node>::new(node)
             .listener(node_listener)
             .listener(rm_listener);
-        let props = sink_obj.props.as_ref().unwrap();
+        let props: &DictRef = match sink_obj.props {
+            Some(p) => p,
+            None => return,
+        };
+        let node_name = match props.get("node.name") {
+            Some(n) => n.to_string(),
+            None => return,
+        };
         let sink = Sink::new(
-            props.get("node.name").unwrap().to_string(),
+            node_name,
             props.get("node.nick").unwrap_or("unknown").to_string(),
             node_proxy,
         );
@@ -246,8 +256,11 @@ impl Monitor {
         data.sinks.insert(id, sink);
     }
 
-    fn set_meta(&self, registry: Rc<Registry>, meta_obj: &GlobalObject<ForeignDict>) {
-        let metadata: Metadata = registry.bind(meta_obj).unwrap();
+    fn set_meta(&self, registry: &RegistryRc, meta_obj: &GlobalObject<&DictRef>) {
+        let metadata: Metadata = match registry.bind(meta_obj) {
+            Ok(m) => m,
+            Err(_) => return,
+        };
         let data_weak = Rc::downgrade(&self.data);
         let obj_listener = Box::new(
             metadata
@@ -304,11 +317,19 @@ impl SoundService for PipewireDevice {
         thread::spawn(move || loop {
             let cache_clone = cache2.clone();
             let monitor = Monitor::new(block_index, cache_clone);
-            let main_loop = pw::MainLoop::new().expect("cannot create loop");
-
-            let context = pw::Context::new(&main_loop).unwrap();
+            let main_loop = match pw::main_loop::MainLoopRc::new(None) {
+                Ok(l) => l,
+                Err(_) => continue,
+            };
+            let context = match pw::context::ContextRc::new(&main_loop, None) {
+                Ok(c) => c,
+                Err(_) => continue,
+            };
             let main_loop_weak = main_loop.downgrade();
-            let core = context.connect(None).unwrap();
+            let core = match context.connect_rc(None) {
+                Ok(c) => c,
+                Err(_) => continue,
+            };
             let _core_listener = core
                 .add_listener_local()
                 .error(move |_, _, _, _| {
@@ -318,17 +339,14 @@ impl SoundService for PipewireDevice {
                 })
                 .register();
 
-            let registry = Rc::new(core.get_registry().unwrap());
-            let registry_weak = Rc::downgrade(&registry);
+            let registry = match core.get_registry_rc() {
+                Ok(r) => r,
+                Err(_) => continue,
+            };
+            let registry_weak = registry.downgrade();
 
-            let check_prop = |props: &Option<ForeignDict>, key: &str, value: &str| -> bool {
-                let mut result = false;
-                if let Some(p) = props.as_ref() {
-                    if let Some(c) = p.get(key) {
-                        result = c == value;
-                    }
-                }
-                result
+            let check_prop = |props: &Option<&DictRef>, key: &str, value: &str| -> bool {
+                props.is_some_and(|p| p.get(key) == Some(value))
             };
             let _reg = registry
                 .add_listener_local()
@@ -339,13 +357,13 @@ impl SoundService for PipewireDevice {
                                 if !check_prop(&obj.props, "media.class", "Audio/Sink") {
                                     return;
                                 }
-                                monitor.add_sink(registry, obj);
+                                monitor.add_sink(&registry, obj);
                             }
                             ObjectType::Metadata => {
                                 if !check_prop(&obj.props, "metadata.name", "default") {
                                     return;
                                 }
-                                monitor.set_meta(registry, obj);
+                                monitor.set_meta(&registry, obj);
                             }
                             _ => {}
                         };

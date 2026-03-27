@@ -1,6 +1,6 @@
 [package]
 name = "rstatus"
-version = "0.9.5"
+version = "0.9.6"
 authors = ["Oleg Keri <ezhi99@gmail.com>"]
 edition = "2021"
 license = "MIT"
@@ -14,7 +14,7 @@ nl80211 = "*"
 
 alsa = { version = "*", optional = true }
 libpulse-binding = { version = "*", optional = true }
-pipewire = { optional = true,  version = "0.7.2" }
+pipewire = { optional = true,  version = "0.9.2" }
 
 
 [features]

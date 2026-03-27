@@ -51,11 +51,10 @@ impl block::Block for Block {
             if status == "Discharging" {
                 if let Ok(v) = value {
                     if v < self.warning_level {
-                        std::process::Command::new("sh")
+                        let _ = std::process::Command::new("sh")
                             .arg("-c")
                             .arg(action)
-                            .status()
-                            .unwrap_or_else(|_| panic!("failed to execute {}", action));
+                            .status();
                     }
                 }
             }

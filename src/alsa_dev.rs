@@ -62,6 +62,8 @@ impl SoundService for AlsaDevice {
             thread::spawn(move || loop {
                 if mixer.wait(None).is_ok() && mixer.handle_events().is_ok() {
                     update_by_index(block_index);
+                } else {
+                    thread::sleep(std::time::Duration::from_secs(1));
                 }
             });
         }

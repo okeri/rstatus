@@ -69,12 +69,12 @@ fn main() {
             });
         }
         utility::mask(signals);
-        let mut count = 1u64;
+        let mut count = gcd as u64;
         loop {
             std::thread::sleep(std::time::Duration::from_secs(gcd as u64));
             for block in blocks.lock().unwrap().iter_mut() {
                 let interval = block.interval();
-                if interval != 0 && count % interval as u64 == 0 {
+                if interval != 0 && count.is_multiple_of(interval as u64) {
                     block.update();
                 }
             }

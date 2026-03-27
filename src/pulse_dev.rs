@@ -62,6 +62,25 @@ impl PulseCache {
     }
 }
 
+struct MainloopLock<'a>(&'a RefCell<Mainloop>);
+
+impl<'a> MainloopLock<'a> {
+    fn new(ml: &'a RefCell<Mainloop>) -> Self {
+        ml.borrow_mut().lock();
+        Self(ml)
+    }
+
+    fn wait(&self) {
+        self.0.borrow_mut().wait();
+    }
+}
+
+impl Drop for MainloopLock<'_> {
+    fn drop(&mut self) {
+        self.0.borrow_mut().unlock();
+    }
+}
+
 pub struct PulseDevice {
     dispatcher: Rc<RefCell<Mainloop>>,
     context: Rc<RefCell<Context>>,
@@ -80,7 +99,7 @@ impl PulseDevice {
                 context
                     .borrow_mut()
                     .set_state_callback(Some(Box::new(move || {
-                        let state = unsafe { (*context_ref.as_ptr()).get_state() };
+                        let state = context_ref.borrow().get_state();
                         match state {
                             context::State::Ready
                             | context::State::Failed
@@ -143,24 +162,22 @@ impl SoundService for PulseDevice {
     }
 
     fn listen(&mut self, block_index: usize) {
-        self.dispatcher.borrow_mut().lock();
-        self.dispatcher.borrow_mut().start().unwrap();
+        let lock = MainloopLock::new(&self.dispatcher);
+        if self.dispatcher.borrow_mut().start().is_err() {
+            panic!("cannot start dispatcher");
+        }
         loop {
-            match self.context.borrow_mut().get_state() {
-                context::State::Ready => {
-                    break;
-                }
+            match self.context.borrow().get_state() {
+                context::State::Ready => break,
                 context::State::Failed | context::State::Terminated => {
-                    self.dispatcher.borrow_mut().unlock();
+                    drop(lock);
                     self.dispatcher.borrow_mut().stop();
                     return;
                 }
-                _ => {
-                    self.dispatcher.borrow_mut().wait();
-                }
+                _ => lock.wait(),
             }
         }
-        self.dispatcher.borrow_mut().unlock();
+        drop(lock);
         self.context.borrow_mut().set_state_callback(None);
         let context = Rc::clone(&self.context);
         let cache = Rc::clone(&self.cache);

@@ -9,8 +9,8 @@ pub fn read_filen(filename: &str, max: usize) -> Result<String, io::Error> {
     use std::io::Read;
     let mut file = fs::File::open(filename)?;
     let mut buf = vec![0u8; max];
-    file.read_exact(&mut buf)
-        .map(|_| String::from(str::from_utf8(&buf).unwrap()))
+    file.read_exact(&mut buf)?;
+    String::from_utf8(buf).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
 }
 
 pub fn gcd(i1: u32, i2: u32) -> u32 {

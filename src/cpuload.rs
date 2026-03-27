@@ -37,10 +37,16 @@ impl block::Block for Block {
                     stat.total += values[e].trim().parse::<u64>().unwrap_or(0);
                 }
             }
+
             unsafe {
                 self.base.value = if let Some(ref prev) = PREV_STAT {
-                    let value = (stat.sub() - prev.sub()) * 100 / (stat.total - prev.total);
-                    Value::new(value as u32)
+                    let delta_total = stat.total.saturating_sub(prev.total);
+                    let delta_busy = stat.sub().saturating_sub(prev.sub());
+                    if delta_total == 0 {
+                        Value::Int(0)
+                    } else {
+                        Value::new((delta_busy * 100 / delta_total) as u32)
+                    }
                 } else {
                     Value::Invalid
                 };

@@ -33,7 +33,7 @@ impl ValueConstructor for String {
     }
 }
 
-impl<'a> ValueConstructor for &'a str {
+impl ValueConstructor for &str {
     fn build(&self) -> Value {
         Value::Str(self.to_string())
     }
@@ -123,6 +123,10 @@ pub struct Base {
     index: usize,
 }
 
+fn json_escape(s: &str) -> String {
+    s.replace('\\', "\\\\").replace('"', "\\\"")
+}
+
 impl Base {
     fn render_bg(bg: Option<u32>) {
         if let Some(c) = bg {
@@ -131,7 +135,7 @@ impl Base {
     }
 
     fn render_subblock(&self, subblock: &SubBlock) {
-        print!("{{\"full_text\":\"{}\",", subblock.text);
+        print!("{{\"full_text\":\"{}\",", json_escape(&subblock.text));
         if subblock.flags & RenderFlags::Separator {
             print!("\"separator_block_width\":{}", self.separator_width);
         } else {
@@ -154,10 +158,10 @@ impl Base {
     }
 
     pub fn render(&self, prev_bg: Option<u32>) {
-        if self.custom_separator.is_some() && self.bgcolor.is_some() {
+        if let (Some(sep), Some(bg)) = (self.custom_separator.as_ref(), self.bgcolor) {
             print!("{{\"full_text\":\"{}\",\"separator\":false,\"separator_block_width\":0,\"color\":\"#{:06X}\"",
-                   self.custom_separator.as_ref().unwrap(),
-                   self.bgcolor.unwrap());
+                   json_escape(sep),
+                   bg);
             Base::render_bg(prev_bg);
             print!("}},");
         }
@@ -188,7 +192,6 @@ impl Base {
                     .add(&self.suffix, suffix_color, suffix_flags(RenderFlags::None))
                     .get()
             }
-
             Value::Str(ref value) => BlockBuilder::new()
                 .add(
                     &self.prefix,
