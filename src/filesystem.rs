@@ -23,13 +23,16 @@ impl block::Block for Block {
                 }
             };
             let mut usage: libc::statvfs = mem::zeroed();
-            self.base.value = if libc::statvfs(path.as_ptr(), &mut usage) == -1
-                || usage.f_blocks == 0
-            {
+            if libc::statvfs(path.as_ptr(), &mut usage) == -1 {
+                self.base.value = Value::Invalid;
+                return;
+            }
+            let used = usage.f_blocks - usage.f_bfree;
+            let total = used + usage.f_bavail;
+            self.base.value = if total == 0 {
                 Value::Invalid
             } else {
-                let used = (100 * (usage.f_blocks - usage.f_bfree) / usage.f_blocks) as u32;
-                Value::new(used)
+                Value::new(((used * 100 + total - 1) / total) as u32)
             };
         }
     }
