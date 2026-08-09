@@ -2,10 +2,9 @@
       command: 'echo test'
       interval: 15
       separator_width: 20
-      retry: 5
 
   - !temperature
-      sensor: '/sys/class/thermal/thermal_zone0/temp'
+      sensor: 'x86_pkg*'
       suffix: " °C"
       interval: 3
       separator_width: 20

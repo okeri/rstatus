@@ -3,10 +3,9 @@
       interval: 15
       custom_separator: '\ue0b2'
       bgcolor: '#202020'
-      retry: 5
 
   - !temperature
-      sensor: '/sys/class/thermal/thermal_zone0/temp'
+      sensor: 'x86_pkg*'
       prefix: '  '
       custom_separator: '\ue0b2'
       bgcolor: '#301010'
