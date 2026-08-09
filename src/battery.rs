@@ -24,6 +24,30 @@ pub struct Block {
     warning_action: Option<String>,
 }
 
+impl Block {
+    fn read_u64(&self, name: &str) -> Result<u64, ()> {
+        std::fs::read_to_string(self.sensor.clone() + "/" + name)
+            .map_err(|_| ())
+            .and_then(|text| text.trim().parse::<u64>().map_err(|_| ()))
+    }
+
+    fn read_capacity(&self) -> Result<u32, ()> {
+        if let Ok(capacity) = self.read_u64("capacity") {
+            return Ok(capacity.min(100) as u32);
+        }
+
+        for (now, full) in [("energy_now", "energy_full"), ("charge_now", "charge_full")] {
+            if let (Ok(now), Ok(full)) = (self.read_u64(now), self.read_u64(full)) {
+                if full > 0 {
+                    return Ok((((now * 100 + full / 2) / full).min(100)) as u32);
+                }
+            }
+        }
+
+        Err(())
+    }
+}
+
 impl block::Block for Block {
     impl_Block!();
 
@@ -43,9 +67,7 @@ impl block::Block for Block {
             self.base.set_suffix(&d.suffix);
         }
 
-        let value = std::fs::read_to_string(self.sensor.clone() + "/capacity")
-            .map_err(|_| ())
-            .and_then(|text| text.trim().parse::<u32>().map_err(|_| ()));
+        let value = self.read_capacity();
 
         if let Some(ref action) = self.warning_action {
             if status == "Discharging" {
