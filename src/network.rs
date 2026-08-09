@@ -28,31 +28,28 @@ const PERC_LUT: [u32; 100] = [
     15, 13, 10, 8, 6, 3, 1, 1, 1, 1, 1, 1, 1, 1,
 ];
 
-fn get_wifi_strength(iname: &str) -> Result<u32, ()> {
+fn is_wireless(iname: &str) -> bool {
+    std::path::Path::new(&format!("/sys/class/net/{}/wireless", iname)).is_dir()
+}
 
-    let interfaces = nl80211::Socket::connect()
+fn get_wifi_strength(iname: &str) -> Result<u32, ()> {
+    let ifindex = std::fs::read_to_string(format!("/sys/class/net/{}/ifindex", iname))
         .map_err(|_| ())?
-        .get_interfaces_info()
+        .trim()
+        .parse::<i32>()
         .map_err(|_| ())?;
 
-    for interface in interfaces {
-        if interface.index.is_some() {
-            if let Some(ref name_bytes) = interface.name {
-                let name_bytes = std::str::from_utf8(name_bytes).map_err(|_| ())?;
-                let name = name_bytes
-                    .strip_suffix('\0')
-                    .or(Some(name_bytes))
-                    .ok_or(())?;
-                if name == iname {
-                    let station = interface.get_station_info().map_err(|_| ())?;
-                    let signal: usize =
-                        255 - (*station.signal.ok_or(())?.first().ok_or(())? as usize);
-                    return Ok(PERC_LUT[signal.clamp(0, PERC_LUT.len() - 1)]);
-                }
-            }
-        }
-    }
-    Err(())
+    let signal = neli_wifi::Socket::connect()
+        .map_err(|_| ())?
+        .get_station_info(ifindex)
+        .map_err(|_| ())?
+        .into_iter()
+        .find_map(|station| station.signal)
+        .ok_or(())?;
+
+    // signal is dBm, the lut starts at -1 dBm
+    let index = (-1 - i32::from(signal)).clamp(0, PERC_LUT.len() as i32 - 1) as usize;
+    Ok(PERC_LUT[index])
 }
 
 fn get_active_interface() -> Result<String, ()> {
@@ -82,11 +79,11 @@ impl block::Block for Block {
     fn update(&mut self) {
         self.base.value = Value::Invalid;
         if let Ok(iface) = get_active_interface() {
-            if let Ok(strength) = get_wifi_strength(&iface) {
+            if is_wireless(&iface) {
                 self.base.set_prefix(&self.wifi);
                 self.base.set_suffix("%");
-                self.base.value = Value::new(strength);
-            } else if let Value::Invalid = self.base.value {
+                self.base.value = Value::new(get_wifi_strength(&iface));
+            } else {
                 self.base.set_prefix("");
                 self.base.set_suffix("");
                 self.base.value = Value::new(self.ethernet.clone());
