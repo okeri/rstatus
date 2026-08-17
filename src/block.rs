@@ -4,7 +4,7 @@ pub trait Block {
     fn interval(&self) -> u32;
     fn signal(&self) -> u32;
     fn bgcolor(&self) -> Option<u32>;
-    fn render(&self, prev_bg: Option<u32>);
+    fn render(&self, out: &mut String, prev_bg: Option<u32>);
     fn set_index(&mut self, index: usize);
 }
 
@@ -16,8 +16,8 @@ macro_rules! impl_Block {
         fn signal(&self) -> u32 {
             self.base.signal()
         }
-        fn render(&self, prev_bg: Option<u32>) {
-            self.base.render(prev_bg);
+        fn render(&self, out: &mut String, prev_bg: Option<u32>) {
+            self.base.render(out, prev_bg);
         }
         fn set_name(&mut self, name: String) {
             self.base.set_name(name);

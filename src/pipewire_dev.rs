@@ -19,6 +19,8 @@ use pw::spa::pod::{deserialize::PodDeserializer, Value, ValueArray};
 use pw::spa::utils::dict::DictRef;
 use pw::types::ObjectType;
 
+const RECONNECT_DELAY_MS: u64 = 20;
+
 #[derive(Copy, Clone)]
 struct Volume {
     mute: bool,
@@ -315,6 +317,7 @@ impl SoundService for PipewireDevice {
     fn listen(&mut self, block_index: usize) {
         let cache2 = self.cache.clone();
         thread::spawn(move || loop {
+            thread::sleep(std::time::Duration::from_millis(RECONNECT_DELAY_MS));
             let cache_clone = cache2.clone();
             let monitor = Monitor::new(block_index, cache_clone);
             let main_loop = match pw::main_loop::MainLoopRc::new(None) {

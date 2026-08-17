@@ -128,24 +128,30 @@ fn json_escape(s: &str) -> String {
 }
 
 impl Base {
-    fn render_bg(bg: Option<u32>) {
+    fn render_bg(out: &mut String, bg: Option<u32>) {
         if let Some(c) = bg {
-            print!(",\"background\":\"#{:06X}\"", c);
+            out.push_str(&format!(",\"background\":\"#{:06X}\"", c));
         }
     }
 
-    fn render_subblock(&self, subblock: &SubBlock) {
-        print!("{{\"full_text\":\"{}\",", json_escape(&subblock.text));
+    fn render_subblock(&self, out: &mut String, subblock: &SubBlock) {
+        out.push_str(&format!(
+            "{{\"full_text\":\"{}\",",
+            json_escape(&subblock.text)
+        ));
         if subblock.flags & RenderFlags::Separator {
-            print!("\"separator_block_width\":{}", self.separator_width);
+            out.push_str(&format!(
+                "\"separator_block_width\":{}",
+                self.separator_width
+            ));
         } else {
-            print!("\"separator\":false,\"separator_block_width\":0");
+            out.push_str("\"separator\":false,\"separator_block_width\":0");
         }
-        Base::render_bg(self.bg());
+        Base::render_bg(out, self.bg());
         if subblock.flags & RenderFlags::Name {
-            print!(",\"name\":\"{}\"", self.name);
+            out.push_str(&format!(",\"name\":\"{}\"", self.name));
         }
-        print!(",\"color\":\"#{:06X}\"}}", subblock.color);
+        out.push_str(&format!(",\"color\":\"#{:06X}\"}}", subblock.color));
     }
 
     fn get_to_color(&self, value: u32) -> u32 {
@@ -157,13 +163,13 @@ impl Base {
         self.color
     }
 
-    pub fn render(&self, prev_bg: Option<u32>) {
+    pub fn render(&self, out: &mut String, prev_bg: Option<u32>) {
         if let (Some(sep), Some(bg)) = (self.custom_separator.as_ref(), self.bgcolor) {
-            print!("{{\"full_text\":\"{}\",\"separator\":false,\"separator_block_width\":0,\"color\":\"#{:06X}\"",
+            out.push_str(&format!("{{\"full_text\":\"{}\",\"separator\":false,\"separator_block_width\":0,\"color\":\"#{:06X}\"",
                    json_escape(sep),
-                   bg);
-            Base::render_bg(prev_bg);
-            print!("}},");
+                   bg));
+            Base::render_bg(out, prev_bg);
+            out.push_str("}},");
         }
 
         let suffix_flags = |flags: RenderFlags| {
@@ -227,11 +233,11 @@ impl Base {
         let mut first = true;
         for sb in subblocks.iter() {
             if !first {
-                print!(",");
+                out.push(',');
             } else {
                 first = false
             }
-            self.render_subblock(sb);
+            self.render_subblock(out, sb);
         }
     }
 

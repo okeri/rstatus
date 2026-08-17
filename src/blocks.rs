@@ -96,20 +96,21 @@ fn init_blocks() -> BlocksCollection {
 }
 
 pub fn display_all() {
-    print!("[");
+    let mut line = String::from("[");
     let mut first = true;
     let blocks = blocks();
     let mut prev_bg: Option<u32> = None;
     for block in blocks.lock().unwrap().iter() {
         if !first {
-            print!(",");
+            line.push(',');
         } else {
             first = false
         }
-        block.render(prev_bg);
+        block.render(&mut line, prev_bg);
         prev_bg = block.bgcolor();
     }
-    println!("],");
+    line.push_str("],");
+    println!("{}", line);
 }
 
 pub fn update_by_index(index: usize) {
