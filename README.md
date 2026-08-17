@@ -49,7 +49,7 @@ carries its options; blocks are rendered left to right in the order they are lis
 ```
 
 Available block types: **!battery**, **!cpuload**, **!custom**, **!filesystem**,
-**!memory**, **!network**, **!temperature**, **!time**, **!volume**.
+**!memory**, **!mpris**, **!network**, **!temperature**, **!time**, **!volume**.
 
 Unknown options are silently ignored, so a typo in an option name costs you the option
 without any warning.
@@ -126,6 +126,57 @@ The value is used space in percent, rounded up.
 #### !memory
 No options besides the common ones. The value is used memory in percent, computed as
 `100 - MemAvailable / MemTotal` from /proc/meminfo.
+
+#### !mpris
+Shows what is playing, taken from any MPRIS2 player on the session bus
+(`org.mpris.MediaPlayer2.*`). The block refreshes itself on player events, so it needs no
+`interval` - unless you display the playing position, see **format** below.
+
+* **players** - preferred players, named by the part of the bus name after
+`org.mpris.MediaPlayer2.`, e.g. `['pmcp', 'chromium']`. An instance suffix is matched too,
+so 'chromium' also matches `chromium.instance123`. When the list is not empty it doubles
+as a whitelist and players outside it are ignored entirely. Empty by default, meaning
+every player is considered.
+* **format** - layout of the value. Omit it and you get `artist - title`, falling back to
+whichever of the two the player reports. Set it and these placeholders are substituted:
+  * **{artist}**, **{title}**, **{album}** - as reported by the player
+  * **{player}** - the player name, the same one **players** matches on
+  * **{position}**, **{length}** - times, as `mm:ss`, widening to `h:mm:ss` past an hour
+
+  Text in `[ ]` is an optional group: it is printed *with* its brackets when every
+placeholder inside it resolves, and dropped entirely when any of them does not, which is
+how `'{title} [{position}/{length}]'` degrades to just the title on a stream reporting no
+length. Outside a group an unresolved placeholder renders as nothing, leaving whatever
+literal text you put around it, so prefer a group when a field may be missing. An unknown
+placeholder is left as written, to make a typo visible.
+* **max_length** - maximum length in characters of the *text* the block shows, an overlong
+value is cut and gets '…' appended. `0` (the default) means unlimited. With **format** it
+is a budget shared by `{artist}`, `{title}`, `{album}` and `{player}`, spent in the order
+they appear; `{position}` and `{length}` never count against it and are never truncated,
+so the clock survives however long the title is.
+* **statuses** - per-state decoration, each with its own `prefix` and `suffix`, exactly
+like **!battery**:
+  * **playing**
+  * **paused**
+  * **stopped**
+
+When several players are alive the playing one wins, then the paused one; ties are broken
+by the order of **players** and then by whoever started playing last. With no player at
+all - or a player reporting no track - the block renders `invalid`, so `invalid: ''` hides
+it while nothing is playing.
+
+**Showing the position needs `interval: 1`.** MPRIS deliberately does not announce the
+playing position - it would be a signal per second per player - so the block samples it on
+the events players *do* send and counts on from there. Without an interval nothing
+re-renders between those events and the clock appears stuck. The interval costs no D-Bus
+traffic, it only redraws:
+
+```yaml
+  - !mpris
+      interval: 1
+      format: '{title} [{position}/{length}]'
+      max_length: 40
+```
 
 #### !network
 Reports on the interface holding the default route with the lowest metric.

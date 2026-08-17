@@ -11,6 +11,7 @@ libc = "*"
 serde = { version = "*", features = ["derive"] }
 serde_yaml = "*"
 neli-wifi = "0.6"
+zbus = "5.19"
 
 alsa = { version = "*", optional = true }
 libpulse-binding = { version = "*", optional = true }

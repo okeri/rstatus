@@ -10,6 +10,7 @@ macro_rules! all_blocks {
             custom,
             filesystem,
             memory,
+            mpris,
             temperature,
             time,
             volume,

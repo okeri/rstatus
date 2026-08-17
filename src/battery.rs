@@ -1,15 +1,7 @@
-use super::base::{default_str_none, default_zero, Base, Value};
+use super::base::{default_str_none, default_zero, Base, Status, Value};
 use super::block;
 use serde::Deserialize;
 use std::collections::BTreeMap;
-
-#[derive(Deserialize)]
-pub struct Status {
-    #[serde(default)]
-    pub prefix: String,
-    #[serde(default)]
-    pub suffix: String,
-}
 
 #[derive(Deserialize)]
 pub struct Block {

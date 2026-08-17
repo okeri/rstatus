@@ -16,6 +16,7 @@ mod alsa_dev;
 mod pipewire_dev;
 
 mod block_builder;
+mod mpris_dev;
 mod sound_service;
 mod utility;
 

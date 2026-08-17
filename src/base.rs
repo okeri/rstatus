@@ -66,6 +66,14 @@ impl Value {
 type Thresholds = BTreeMap<u32, u32>;
 
 #[derive(Deserialize)]
+pub struct Status {
+    #[serde(default)]
+    pub prefix: String,
+    #[serde(default)]
+    pub suffix: String,
+}
+
+#[derive(Deserialize)]
 pub struct Base {
     /// value to display
     #[serde(skip)]
@@ -124,7 +132,19 @@ pub struct Base {
 }
 
 fn json_escape(s: &str) -> String {
-    s.replace('\\', "\\\\").replace('"', "\\\"")
+    let mut result = String::with_capacity(s.len());
+    for c in s.chars() {
+        match c {
+            '"' => result.push_str("\\\""),
+            '\\' => result.push_str("\\\\"),
+            '\n' => result.push_str("\\n"),
+            '\r' => result.push_str("\\r"),
+            '\t' => result.push_str("\\t"),
+            c if (c as u32) < 0x20 => result.push_str(&format!("\\u{:04x}", c as u32)),
+            c => result.push(c),
+        }
+    }
+    result
 }
 
 impl Base {
