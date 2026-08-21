@@ -13,16 +13,11 @@ pub fn read_filen(filename: &str, max: usize) -> Result<String, io::Error> {
     String::from_utf8(buf).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
 }
 
-pub fn gcd(i1: u32, i2: u32) -> u32 {
-    let mut x = i1;
-    let mut y = i2;
-    let mut r = x % y;
-    while r != 0 {
-        x = y;
-        y = r;
-        r = x % y;
+pub fn gcd(mut x: u32, mut y: u32) -> u32 {
+    while y != 0 {
+        (x, y) = (y, x % y);
     }
-    y
+    x
 }
 
 pub fn mask(signals: Vec<i32>) {

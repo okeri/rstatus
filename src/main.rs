@@ -37,22 +37,17 @@ fn update_by_signal(sig: i32) {
 
 fn main() {
     let blocks = blocks::blocks();
-    let mut gcd: u32 = 0;
-    for block in blocks.lock().unwrap().iter() {
-        gcd = block.interval();
-        if gcd != 0 {
-            break;
-        }
-    }
+    let gcd = blocks
+        .lock()
+        .unwrap()
+        .iter()
+        .map(|block| block.interval())
+        .fold(0, utility::gcd);
 
     if gcd != 0 {
         let mut signals = vec![];
         for block in blocks.lock().unwrap().iter_mut() {
             block.update();
-            let interval = block.interval();
-            if interval != 0 {
-                gcd = utility::gcd(gcd, interval);
-            }
             let signal = block.signal();
             if signal != 0 {
                 utility::signal(signal as i32, update_by_signal);
